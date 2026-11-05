@@ -8,7 +8,7 @@ describe('Ejecutar pronóstico', () => {
   it('envía solo los métodos elegidos con sus parámetros y abre el resultado', async () => {
     const ui = userEvent.setup();
     const requests = mockBackend({
-      me: session('PLANNER'),
+      me: session('ADMIN'),
       handler: (req) =>
         req.method === 'POST' && req.url === '/api/v1/forecasts' ? { status: 201, data: DETAIL } : fixtures(req),
     });
@@ -42,7 +42,7 @@ describe('Ejecutar pronóstico', () => {
   it('muestra los errores del backend junto al parámetro del método correcto', async () => {
     const ui = userEvent.setup();
     mockBackend({
-      me: session('PLANNER'),
+      me: session('ADMIN'),
       handler: (req) =>
         req.method === 'POST'
           ? {
@@ -67,7 +67,7 @@ describe('Ejecutar pronóstico', () => {
 
   it('pide al menos un método sin llamar al backend', async () => {
     const ui = userEvent.setup();
-    const requests = mockBackend({ me: session('ANALYST'), handler: fixtures });
+    const requests = mockBackend({ me: session('ADMIN'), handler: fixtures });
     renderApp('/pronosticos');
 
     for (const name of [
@@ -85,7 +85,7 @@ describe('Ejecutar pronóstico', () => {
 
   it('cambia la cantidad de pesos y muestra su suma', async () => {
     const ui = userEvent.setup();
-    mockBackend({ me: session('PLANNER'), handler: fixtures });
+    mockBackend({ me: session('ADMIN'), handler: fixtures });
     renderApp('/pronosticos');
 
     await ui.selectOptions(await screen.findByLabelText('Cantidad de pesos'), '2');
@@ -97,7 +97,7 @@ describe('Ejecutar pronóstico', () => {
 
 describe('Resultado de un pronóstico', () => {
   it('muestra la comparación con parámetros, pronóstico siguiente, mejores y estado', async () => {
-    mockBackend({ me: session('SUPERVISOR'), handler: fixtures });
+    mockBackend({ me: session('PLANNER'), handler: fixtures });
     renderApp('/pronosticos/7');
 
     const table = await screen.findByRole('table', { name: 'Comparación de métodos por MAD y MAPE' });
@@ -132,7 +132,7 @@ describe('Resultado de un pronóstico', () => {
   });
 
   it('las ejecuciones recientes enlazan a su resultado', async () => {
-    mockBackend({ me: session('SUPERVISOR'), handler: fixtures });
+    mockBackend({ me: session('PLANNER'), handler: fixtures });
     renderApp('/pronosticos');
     expect(await screen.findByRole('link', { name: 'Ver ejecución 7' })).toHaveAttribute('href', '/pronosticos/7');
   });

@@ -39,7 +39,7 @@ describe('parseObservations', () => {
 describe('Históricos', () => {
   it('lista las referencias y muestra la producción de la elegida', async () => {
     const ui = userEvent.setup();
-    mockBackend({ me: session('SUPERVISOR'), handler: fixtures });
+    mockBackend({ me: session('PLANNER'), handler: fixtures });
     renderApp('/historicos');
 
     const row = (await screen.findByRole('rowheader', { name: /Jersey Pro/ })).closest('tr');

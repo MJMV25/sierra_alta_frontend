@@ -77,7 +77,7 @@ export default function HistoryPage() {
 function SeriesTable({ options, selectedId, onSelect }) {
   return (
     <div className="table-wrap">
-      <table className="table">
+      <table className="table table--sticky table--cards">
         <caption className="visually-hidden">Referencias con su producción cargada</caption>
         <thead>
           <tr>
@@ -99,13 +99,17 @@ function SeriesTable({ options, selectedId, onSelect }) {
                 {option.productName}
                 <span className="table__muted table__sub">{option.productCode}</span>
               </th>
-              <td>
+              <td data-label="Medida">
                 {MEASURE_LABELS[option.measure] ?? option.measure} ({option.unit})
               </td>
-              <td className="table__number">{option.observations}</td>
-              <td>{formatPeriod(option.firstPeriod)}</td>
-              <td>{formatPeriod(option.lastPeriod)}</td>
-              <td className="table__number">{option.dataVersion ?? '—'}</td>
+              <td className="table__number" data-label="Meses cargados">
+                {option.observations}
+              </td>
+              <td data-label="Desde">{formatPeriod(option.firstPeriod)}</td>
+              <td data-label="Hasta">{formatPeriod(option.lastPeriod)}</td>
+              <td className="table__number" data-label="Versión de datos">
+                {option.dataVersion ?? '—'}
+              </td>
               <td className="table__actions">
                 <button
                   type="button"
@@ -155,7 +159,7 @@ function SeriesDetail({ seriesId, onClose }) {
               <details className="details">
                 <summary>Ver tabla de datos ({data.observations.length} meses)</summary>
                 <div className="table-wrap table-wrap--scroll">
-                  <table className="table table--compact">
+                  <table className="table table--compact table--sticky">
                     <caption className="visually-hidden">Producción por mes</caption>
                     <thead>
                       <tr>

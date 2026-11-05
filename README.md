@@ -41,10 +41,9 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
 
 | Usuario      | Rol                         | Ve en el menú |
 |--------------|-----------------------------|---------------|
-| `admin`      | Administrador del sistema   | Usuarios |
-| `planeador`  | Planeador de producción     | Históricos, Pronósticos (con "Ejecutar pronóstico"), Indicadores |
-| `supervisor` | Supervisor de línea         | Históricos, Pronósticos, Indicadores (solo consulta) |
-| `analista`   | Analista de datos           | Históricos (con "Cargar históricos"), Pronósticos (con "Ejecutar pronóstico"), Indicadores |
+| `admin`      | Administrador del sistema   | Todo: Históricos (con "Cargar históricos"), Pronósticos (con "Ejecutar pronóstico"; es el único que ejecuta), Indicadores y Usuarios |
+| `planeador`  | Planeador de producción     | Históricos, Pronósticos e Indicadores (consulta y extrae la información) |
+| `analista`   | Analista de datos           | Históricos (con "Cargar históricos"), Pronósticos e Indicadores (consulta) |
 
 ## Seguridad en el cliente
 
@@ -77,6 +76,11 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
   MAPE, menor MAD y menor MAPE por separado y estado frente al umbral), gráfico de real y pronósticos con
   detalle al pasar el mouse o con las flechas, y tabla de datos con los meses evaluados resaltados.
 - **Indicadores** (`/indicadores?ejecucion=7`): la misma tabla comparativa para cualquier ejecución.
+- Gráfico: cada mes ocupa al menos 34 px; con más meses de los que caben, la zona del gráfico se desplaza
+  hacia los lados (el eje Y queda fijo) y abre en los meses más recientes. Etiquetas del eje X sin
+  superponerse, con el año en enero.
+- Responsive: en pantallas de hasta 640 px las tablas de comparación, ejecuciones y referencias se muestran
+  como tarjetas; la tabla de datos mes a mes conserva el encabezado y la columna del mes fijos al desplazarse.
 - El frontend no recalcula nada: MAD, MAPE, mejores y estado vienen del backend. Cada método tiene un color
   fijo (paleta categórica validada para daltonismo) y la tabla de datos acompaña siempre al gráfico.
 

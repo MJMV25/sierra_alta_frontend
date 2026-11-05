@@ -4,7 +4,15 @@ import { getExecutionIndicators, getForecast } from '../../api/modules';
 import { useAuth } from '../../auth/AuthProvider';
 import LineChart from '../../components/LineChart';
 import QueryState from '../../components/QueryState';
-import { formatDateTime, formatNumber, formatPeriod, MEASURE_LABELS, METHOD_LABELS, METHOD_ORDER } from '../../format';
+import {
+  formatDateTime,
+  formatNumber,
+  formatPeriod,
+  MEASURE_LABELS,
+  METHOD_LABELS,
+  METHOD_ORDER,
+  METHOD_SHORT_LABELS,
+} from '../../format';
 import useModuleQuery from '../useModuleQuery';
 import ComparisonTable from './ComparisonTable';
 
@@ -115,32 +123,44 @@ function DataTable({ detail, measure }) {
   const evaluated = (period) => detail.evaluationStart && period >= detail.evaluationStart && actualOf.has(period);
 
   return (
-    <details className="details">
+    <details className="details" open>
       <summary>Ver tabla de datos ({periods.length} meses)</summary>
-      <p className="panel__text">Los meses resaltados son los que entran al MAD y al MAPE.</p>
+      <p className="table-legend">
+        <span className="table-legend__item">
+          <span className="table-legend__swatch table-legend__swatch--evaluated" aria-hidden="true" />
+          Mes que entra al MAD y al MAPE
+        </span>
+        <span className="table-legend__item">
+          <span className="table-legend__swatch table-legend__swatch--next" aria-hidden="true" />
+          Mes pronosticado (sin dato real)
+        </span>
+      </p>
       <div className="table-wrap table-wrap--scroll">
-        <table className="table table--compact">
+        <table className="table table--compact table--sticky">
           <caption className="visually-hidden">{measure} real y pronóstico de cada método por mes</caption>
           <thead>
             <tr>
               <th scope="col">Mes</th>
               <th scope="col" className="table__number">
-                Real
+                Real ({detail.unit})
               </th>
               {columns.map((column) => (
-                <th key={column.method} scope="col" className="table__number">
-                  {METHOD_LABELS[column.method] ?? column.method}
+                <th key={column.method} scope="col" className="table__number" title={METHOD_LABELS[column.method]}>
+                  <span className="table__swatch" style={{ background: METHOD_COLORS[column.method] }} aria-hidden="true" />
+                  {METHOD_SHORT_LABELS[column.method] ?? column.method}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {periods.map((period, i) => (
-              <tr key={period} className={evaluated(period) ? 'table__row--evaluated' : undefined}>
-                <th scope="row">
-                  {formatPeriod(period)}
-                  {!actualOf.has(period) && <span className="tag">pronóstico</span>}
-                </th>
+              <tr
+                key={period}
+                className={
+                  !actualOf.has(period) ? 'table__row--next' : evaluated(period) ? 'table__row--evaluated' : undefined
+                }
+              >
+                <th scope="row">{formatPeriod(period)}</th>
                 <td className="table__number">{formatNumber(actualOf.get(period))}</td>
                 {columns.map((column) => (
                   <td key={column.method} className="table__number">

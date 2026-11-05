@@ -8,6 +8,14 @@ export const METHOD_LABELS = {
   TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: 'Suavizamiento con tendencia (Holt)',
 };
 
+/** Nombres cortos para encabezados de tablas angostas; el nombre completo va en `title`. */
+export const METHOD_SHORT_LABELS = {
+  SIMPLE_MOVING_AVERAGE: 'Prom. simple',
+  WEIGHTED_MOVING_AVERAGE: 'Prom. ponderado',
+  EXPONENTIAL_SMOOTHING: 'Suavizamiento',
+  TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: 'Holt',
+};
+
 /** Orden fijo de los métodos: también fija su color en el gráfico. */
 export const METHOD_ORDER = Object.keys(METHOD_LABELS);
 

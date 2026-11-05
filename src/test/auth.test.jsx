@@ -74,9 +74,9 @@ describe('Inicio de sesión', () => {
   });
 
   it('redirige al inicio si ya hay sesión', async () => {
-    mockBackend({ me: session('SUPERVISOR') });
+    mockBackend({ me: session('ANALYST') });
     renderApp('/login');
-    expect(await screen.findByRole('heading', { name: 'Bienvenido, supervisor' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Bienvenido, analyst' })).toBeInTheDocument();
   });
 });
 

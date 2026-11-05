@@ -21,7 +21,7 @@ export default function ComparisonTable({ comparison, detail = null, unit = '' }
           : `Un método cumple si su MAPE es menor que ${formatPercent(threshold)}.`}
       </p>
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table--sticky table--cards">
           <caption className="visually-hidden">Comparación de métodos por MAD y MAPE</caption>
           <thead>
             <tr>
@@ -50,17 +50,29 @@ export default function ComparisonTable({ comparison, detail = null, unit = '' }
                   <th scope="row" className="table__strong">
                     {METHOD_LABELS[row.method] ?? row.method}
                   </th>
-                  {detail && <td className="table__muted">{method ? formatParameters(method) : '—'}</td>}
-                  {nextPeriod && <td className="table__number">{formatNumber(method?.nextForecast?.forecast)}</td>}
-                  <td className="table__number">
-                    {row.mad === null ? 'No calculable' : formatNumber(row.mad)}
-                    {row.bestByMad && <span className="tag tag--best">Menor MAD</span>}
+                  {detail && (
+                    <td className="table__muted" data-label="Parámetros">
+                      {method ? formatParameters(method) : '—'}
+                    </td>
+                  )}
+                  {nextPeriod && (
+                    <td className="table__number" data-label={`Pronóstico ${formatPeriod(nextPeriod)}`}>
+                      {formatNumber(method?.nextForecast?.forecast)}
+                    </td>
+                  )}
+                  <td className="table__number" data-label={`MAD${unit ? ` (${unit})` : ''}`}>
+                    <span>
+                      {row.mad === null ? 'No calculable' : formatNumber(row.mad)}
+                      {row.bestByMad && <span className="tag tag--best">Menor MAD</span>}
+                    </span>
                   </td>
-                  <td className="table__number">
-                    {formatPercent(row.mapePercent)}
-                    {row.bestByMape && <span className="tag tag--best">Menor MAPE</span>}
+                  <td className="table__number" data-label="MAPE">
+                    <span>
+                      {formatPercent(row.mapePercent)}
+                      {row.bestByMape && <span className="tag tag--best">Menor MAPE</span>}
+                    </span>
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <span className={`badge badge--${status.tone}`}>
                       <span aria-hidden="true">{status.icon}</span> {status.label}
                     </span>
@@ -76,13 +88,18 @@ export default function ComparisonTable({ comparison, detail = null, unit = '' }
   );
 }
 
+const zeroMonths = (count) =>
+  `${count} ${count === 1 ? 'mes' : 'meses'} con producción 0 no ${count === 1 ? 'entra' : 'entran'} al MAPE (sí al MAD).`;
+
 function Warnings({ comparison }) {
-  const notes = comparison.methods
-    .filter((row) => row.mapeExcluded > 0)
-    .map(
-      (row) =>
-        `${METHOD_LABELS[row.method] ?? row.method}: ${row.mapeExcluded} ${row.mapeExcluded === 1 ? 'mes' : 'meses'} con producción 0 no ${row.mapeExcluded === 1 ? 'entra' : 'entran'} al MAPE (sí al MAD).`,
-    );
+  const excluded = comparison.methods.filter((row) => row.mapeExcluded > 0);
+  const sameForAll =
+    comparison.methods.length > 1 &&
+    excluded.length === comparison.methods.length &&
+    excluded.every((row) => row.mapeExcluded === excluded[0].mapeExcluded);
+  const notes = sameForAll
+    ? [`En todos los métodos, ${zeroMonths(excluded[0].mapeExcluded)}`]
+    : excluded.map((row) => `${METHOD_LABELS[row.method] ?? row.method}: ${zeroMonths(row.mapeExcluded)}`);
   if (comparison.methods.length > 1) {
     notes.push('El MAD de cada método depende de los meses evaluados, que cambian según los métodos que se ejecuten juntos.');
   }
