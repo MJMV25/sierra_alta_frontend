@@ -1,11 +1,21 @@
 import { formatNumber, formatPercent, formatPeriod, formatParameters, METHOD_LABELS, STATUS_LABELS } from '../../format';
 
+/** Orden de las filas: el de los métodos, o de menor a mayor MAD o MAPE (los no calculables al final). */
+export const SORT_OPTIONS = { method: 'Orden de los métodos', mad: 'Menor MAD primero', mape: 'Menor MAPE primero' };
+
+export function sortRows(rows, sortBy) {
+  if (sortBy === 'method') return rows;
+  const key = sortBy === 'mad' ? 'mad' : 'mapePercent';
+  const value = (row) => (row[key] === null || row[key] === undefined ? Infinity : Number(row[key]));
+  return [...rows].sort((a, b) => value(a) - value(b));
+}
+
 /**
  * Tabla comparativa de una ejecución (GET /indicators/executions/{id}). Ni el MAD ni el MAPE mandan: se
  * marca el menor de cada uno por separado (ADR 07). Con `detail` (la ejecución completa) agrega los
- * parámetros y el pronóstico del mes siguiente de cada método.
+ * parámetros y el pronóstico del mes siguiente de cada método. `sortBy` ordena las filas (SORT_OPTIONS).
  */
-export default function ComparisonTable({ comparison, detail = null, unit = '' }) {
+export default function ComparisonTable({ comparison, detail = null, unit = '', sortBy = 'method' }) {
   const methodOf = (code) => detail?.methods.find((m) => m.method === code);
   const nextPeriod = detail?.methods[0]?.nextForecast?.period;
   const threshold = comparison.mapeThresholdPercent;
@@ -42,7 +52,7 @@ export default function ComparisonTable({ comparison, detail = null, unit = '' }
             </tr>
           </thead>
           <tbody>
-            {comparison.methods.map((row) => {
+            {sortRows(comparison.methods, sortBy).map((row) => {
               const status = STATUS_LABELS[row.status] ?? { label: row.status, tone: 'off', icon: '' };
               const method = methodOf(row.method);
               return (

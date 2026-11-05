@@ -31,6 +31,8 @@ describe('Ejecutar pronóstico', () => {
     const post = requests.find((r) => r.method === 'POST');
     expect(post.data).toEqual({
       seriesId: 1,
+      from: '2026-04',
+      to: '2026-07',
       methods: [
         { method: 'SIMPLE_MOVING_AVERAGE', periods: 1 },
         { method: 'EXPONENTIAL_SMOOTHING', alpha: 0.0025 },

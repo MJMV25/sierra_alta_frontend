@@ -449,6 +449,36 @@ textarea.field__control {
   color: var(--color-ink-soft);
 }
 
+.period {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.period legend {
+  margin-bottom: 8px;
+}
+
+.period__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 220px));
+  gap: 12px;
+}
+
+.period .field__hint {
+  margin: 8px 0 0;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-focus);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .methods {
   display: grid;
   gap: 12px;
@@ -1221,4 +1251,346 @@ textarea.field__control {
     display: inline;
     margin-left: 8px;
   }
+}
+
+/* ---------- Dashboard del pronóstico ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inline-field .field__control--compact {
+  min-width: 0;
+  width: auto;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check:has(input:disabled) {
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.chart-controls {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--color-page);
+  border-radius: var(--radius);
+}
+
+.chart-controls__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+}
+
+.chart-controls__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.chart-controls__group legend {
+  float: left;
+  margin-right: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chart-controls__downloads {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chip:has(input:not(:checked)) {
+  color: var(--color-muted);
+  background: transparent;
+}
+
+.chip:has(input:not(:checked)) .chip__swatch {
+  opacity: 0.3;
+}
+
+.chip:has(input:focus-visible),
+.segmented__option:has(input:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.chip input,
+.segmented__option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chip__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid #c9cdd3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.segmented__option {
+  position: relative;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.segmented__option + .segmented__option {
+  border-left: 1px solid #c9cdd3;
+}
+
+.segmented__option--on {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.chart__grid--zero {
+  stroke: #c9cdd3;
+}
+
+.chart__values text {
+  fill: var(--color-ink-soft);
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: var(--color-surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.chart__empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.table-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.indicator-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.bars {
+  margin: 0;
+}
+
+.bars__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.bars__subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.bars__list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bars__row {
+  display: grid;
+  gap: 4px;
+}
+
+.bars__label {
+  font-size: 13px;
+  color: var(--color-ink-soft);
+}
+
+.bars__track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 18px;
+  /* espacio para el valor escrito a la derecha de la barra más larga */
+  padding-right: 96px;
+}
+
+.bars__bar {
+  height: 12px;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+}
+
+.bars__value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bars__value--best {
+  font-weight: 700;
+}
+
+.bars__empty {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.bars__threshold {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 0;
+  border-left: 2px dashed var(--color-danger);
+}
+
+.bars__note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.bars__threshold-key {
+  display: inline-block;
+  height: 12px;
+  border-left: 2px dashed var(--color-danger);
+}
+
+.print-only {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .chart-controls__downloads {
+    margin-left: 0;
+  }
+
+  .page__header--row .toolbar {
+    width: 100%;
+  }
+}
+
+/* ---------- Impresión (Exportar a PDF) ----------
+   Solo el contenido: sin menú, sin controles; el gráfico completo como imagen y la tabla sin recorte. */
+@media print {
+  .topbar,
+  .sidebar,
+  .skip-link,
+  .no-print,
+  .chart {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .print-chart {
+    width: 100%;
+    height: auto;
+    margin-bottom: 12px;
+  }
+
+  body,
+  .layout__main {
+    background: #fff;
+  }
+
+  .panel {
+    box-shadow: none;
+    break-inside: avoid-page;
+  }
+
+  .table-wrap--scroll {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .table--sticky th {
+    position: static;
+  }
+
+  .details summary {
+    list-style: none;
+  }
+}
+
+/* Misma escala que las barras: la pista sin el espacio reservado para el valor. */
+.bars__scale {
+  position: absolute;
+  inset: 0 96px 0 0;
+  pointer-events: none;
 }

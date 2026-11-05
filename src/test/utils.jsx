@@ -7,8 +7,8 @@ import { AuthProvider } from '../auth/AuthProvider';
 import AppRoutes from '../routes';
 
 export const PERMISSIONS = {
-  ADMIN: ['users:manage', 'history:read', 'history:write', 'forecast:execute', 'forecast:read', 'indicators:read'],
-  PLANNER: ['history:read', 'forecast:read', 'indicators:read'],
+  ADMIN: ['users:manage', 'history:read', 'history:write', 'forecast:execute', 'forecast:read', 'indicators:read', 'forecast:export'],
+  PLANNER: ['history:read', 'forecast:read', 'indicators:read', 'forecast:export'],
   ANALYST: ['history:read', 'history:write', 'forecast:read', 'indicators:read'],
 };
 

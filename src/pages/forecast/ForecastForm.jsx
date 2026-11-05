@@ -35,12 +35,20 @@ export default function ForecastForm({ options }) {
   const navigate = useNavigate();
   const available = options.filter((option) => option.observations > 0);
   const [seriesId, setSeriesId] = useState(available.length === 1 ? String(available[0].seriesId) : '');
+  const [range, setRange] = useState(() => fullRange(available.length === 1 ? available[0] : null));
   const [config, setConfig] = useState(INITIAL);
   const [fieldErrors, setFieldErrors] = useState({});
   const [problem, setProblem] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const selected = available.find((option) => String(option.seriesId) === seriesId);
+  const months = selected ? monthsBetween(selected.firstPeriod, selected.lastPeriod) : [];
+  const usedMonths = range.from && range.to && range.from <= range.to ? monthsBetween(range.from, range.to).length : 0;
+
+  const chooseSeries = (value) => {
+    setSeriesId(value);
+    setRange(fullRange(available.find((option) => String(option.seriesId) === value)));
+  };
   const update = (method, changes) => setConfig((current) => ({ ...current, [method]: { ...current[method], ...changes } }));
 
   const handleSubmit = async (event) => {
@@ -50,13 +58,14 @@ export default function ForecastForm({ options }) {
     const errors = {};
     if (!seriesId) errors.seriesId = 'Elija la referencia que quiere pronosticar.';
     if (chosen.length === 0) errors.methods = 'Elija al menos un método.';
+    if (seriesId && range.from > range.to) errors.to = 'El mes final no puede ser anterior al inicial.';
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setBusy(true);
     try {
       const created = await executeForecast(
-        { seriesId: Number(seriesId), methods: chosen.map((method) => toRequest(method, config[method])) },
+        { seriesId: Number(seriesId), from: range.from, to: range.to, methods: chosen.map((method) => toRequest(method, config[method])) },
         crypto.randomUUID(),
       );
       navigate(`/pronosticos/${created.id}`);
@@ -85,10 +94,9 @@ export default function ForecastForm({ options }) {
           error={fieldErrors.seriesId}
           hint={
             selected &&
-            `${selected.observations} meses cargados, de ${formatPeriod(selected.firstPeriod)} a ${formatPeriod(selected.lastPeriod)}. ` +
-              `Se pronostica ${formatPeriod(nextPeriod(selected.lastPeriod))}.`
+            `${selected.observations} meses cargados, de ${formatPeriod(selected.firstPeriod)} a ${formatPeriod(selected.lastPeriod)}.`
           }
-          onChange={(event) => setSeriesId(event.target.value)}
+          onChange={(event) => chooseSeries(event.target.value)}
         >
           <option value="">Elija una referencia…</option>
           {available.map((option) => (
@@ -97,6 +105,50 @@ export default function ForecastForm({ options }) {
             </option>
           ))}
         </FormField>
+
+        {selected && (
+          <fieldset className="period">
+            <legend className="field__label">Periodo histórico</legend>
+            <div className="period__fields">
+              <FormField
+                id="forecast-from"
+                label="Desde"
+                value={range.from}
+                error={fieldErrors.from}
+                onChange={(event) => setRange((current) => ({ ...current, from: event.target.value }))}
+              >
+                {months.map((month) => (
+                  <option key={month} value={month}>
+                    {formatPeriod(month)}
+                  </option>
+                ))}
+              </FormField>
+              <FormField
+                id="forecast-to"
+                label="Hasta"
+                value={range.to}
+                error={fieldErrors.to}
+                onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))}
+              >
+                {months.map((month) => (
+                  <option key={month} value={month}>
+                    {formatPeriod(month)}
+                  </option>
+                ))}
+              </FormField>
+            </div>
+            <p className="field__hint">
+              {usedMonths > 0
+                ? `Se usan ${usedMonths} ${usedMonths === 1 ? 'mes' : 'meses'} y se pronostica ${formatPeriod(nextPeriod(range.to))}.`
+                : 'Elija un mes inicial anterior o igual al final.'}{' '}
+              {(range.from !== selected.firstPeriod || range.to !== selected.lastPeriod) && (
+                <button type="button" className="link-button" onClick={() => setRange(fullRange(selected))}>
+                  Usar toda la serie
+                </button>
+              )}
+            </p>
+          </fieldset>
+        )}
 
         <fieldset className="methods" aria-describedby={fieldErrors.methods ? 'methods-error' : undefined}>
           <legend className="field__label">Métodos a comparar</legend>
@@ -225,6 +277,17 @@ function errorsByMethod(errors, chosen) {
     acc[key] = acc[key] ? `${acc[key]} ${message}` : message;
     return acc;
   }, {});
+}
+
+function fullRange(option) {
+  return option ? { from: option.firstPeriod, to: option.lastPeriod } : { from: '', to: '' };
+}
+
+/** Meses "AAAA-MM" de `from` a `to`, ambos incluidos. */
+export function monthsBetween(from, to) {
+  const months = [];
+  for (let month = from; month <= to; month = nextPeriod(month)) months.push(month);
+  return months;
 }
 
 function nextPeriod(period) {

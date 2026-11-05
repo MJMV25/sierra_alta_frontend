@@ -31,8 +31,8 @@ export async function getForecast(id) {
  * `idempotencyKey` nueva por cada clic en "Ejecutar": si la red reintenta, el backend devuelve la
  * ejecución original en lugar de crear otra.
  */
-export async function executeForecast({ seriesId, methods }, idempotencyKey) {
-  const { data } = await http.post('/forecasts', { seriesId, methods }, {
+export async function executeForecast({ seriesId, from, to, methods }, idempotencyKey) {
+  const { data } = await http.post('/forecasts', { seriesId, from, to, methods }, {
     headers: { 'Idempotency-Key': idempotencyKey },
   });
   return data;

@@ -1,26 +1,41 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { formatNumber, formatPeriod } from '../format';
 
 const HEIGHT = 300;
-const MARGIN = { top: 16, bottom: 44, side: 28 };
+const MARGIN = { top: 22, bottom: 44, side: 28 };
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
-const Y_AXIS_W = 64;
+export const Y_AXIS_W = 64;
 /** Ancho mínimo por mes: con más meses de los que caben, el gráfico se desplaza en horizontal. */
 const MIN_STEP = 34;
+/** Con etiquetas de valor cada mes necesita más espacio para que los números no se monten. */
+const MIN_STEP_WITH_VALUES = 58;
+/** Ancho mínimo de cada columna dentro del grupo de un mes. */
+const MIN_BAR = 6;
+const MAX_BAR = 22;
 /** Distancia mínima entre etiquetas del eje X para que no se monten. */
 const MIN_LABEL_GAP = 46;
+/** Distancia vertical mínima entre dos etiquetas de valor del mismo mes. */
+const MIN_VALUE_GAP = 13;
 const SHORT_MONTH = new Intl.DateTimeFormat('es-CO', { month: 'short', timeZone: 'UTC' });
 
 /**
- * Líneas sobre meses consecutivos con un solo eje Y. `series`: [{ key, label, color, dashed?, values }],
+ * Series sobre meses consecutivos con un solo eje Y. `series`: [{ key, label, color, dashed?, values }],
  * donde `values` tiene un valor (o null) por cada elemento de `periods`.
+ *
+ * `type`: 'line' (todas en línea), 'column' (todas en columnas agrupadas por mes) o 'combo' (las series de
+ * `columnKeys` en columnas y el resto en línea). Las columnas siempre arrancan en 0; las líneas pueden usar
+ * una escala ajustada a los datos (`zeroBased = false`). `showValues` escribe el valor de cada punto y omite
+ * el que quedaría encima de otro.
  *
  * Cada mes ocupa al menos MIN_STEP píxeles: si no caben en el ancho disponible, la zona del gráfico se
  * desplaza en horizontal (el eje Y queda fijo) y abre mostrando los meses más recientes. Al pasar el mouse,
  * tocar o mover el foco con las flechas, una línea guía muestra los valores de ese mes. La tabla de datos
- * va aparte (accesible).
+ * va aparte (accesible). El `ref` apunta a la figura, para exportarla como imagen.
  */
-export default function LineChart({ title, periods, series }) {
+const LineChart = forwardRef(function LineChart(
+  { title, periods, series, type = 'line', columnKeys = [], showValues = false, zeroBased = true },
+  ref,
+) {
   const titleId = useId();
   const hintId = useId();
   const scrollRef = useRef(null);
@@ -36,24 +51,40 @@ export default function LineChart({ title, periods, series }) {
     return () => observer.disconnect();
   }, []);
 
+  const asColumn = (s) => type === 'column' || (type === 'combo' && columnKeys.includes(s.key));
+  const columns = series.filter(asColumn);
+  const lines = series.filter((s) => !asColumn(s));
+
   const layout = useMemo(() => {
     const values = series.flatMap((s) => s.values).filter((v) => v !== null && v !== undefined);
-    const ticks = niceTicks(Math.min(0, ...values), Math.max(...values, 1));
+    const fromZero = zeroBased || columns.length > 0 || values.length === 0;
+    const low = values.length === 0 ? 0 : Math.min(...values);
+    const high = values.length === 0 ? 1 : Math.max(...values);
+    const ticks = fromZero ? niceTicks(Math.min(0, low), Math.max(high, 1)) : niceTicks(low, high === low ? low + 1 : high);
     const min = ticks[0];
     const max = ticks[ticks.length - 1];
     const gaps = Math.max(periods.length - 1, 1);
-    const step = Math.max(MIN_STEP, (available - 2 * MARGIN.side) / gaps);
-    const width = Math.max(available, Math.round(step * gaps + 2 * MARGIN.side));
+    const minStep = Math.max(
+      showValues ? MIN_STEP_WITH_VALUES : MIN_STEP,
+      columns.length > 0 ? columns.length * MIN_BAR + 12 : 0,
+    );
+    // Con columnas, medio mes de aire a cada lado para que la primera y la última no se corten.
+    const side = columns.length > 0 ? Math.max(MARGIN.side, minStep / 2 + 4) : MARGIN.side;
+    const step = Math.max(minStep, (available - 2 * side) / gaps);
+    const width = Math.max(available, Math.round(step * gaps + 2 * side));
+    const bar = Math.min(MAX_BAR, Math.max(MIN_BAR - 1, (step * 0.72) / Math.max(columns.length, 1) - 2));
     return {
       ticks,
       step,
+      side,
       width,
+      bar,
       scrolls: width > available + 1,
       labelEvery: Math.max(1, Math.ceil(MIN_LABEL_GAP / step)),
-      x: (i) => (periods.length > 1 ? MARGIN.side + i * step : width / 2),
+      x: (i) => (periods.length > 1 ? side + i * step : width / 2),
       y: (v) => MARGIN.top + PLOT_H - ((v - min) / (max - min)) * PLOT_H,
     };
-  }, [periods, series, available]);
+  }, [periods, series, available, showValues, zeroBased, columns.length]);
 
   // Abre mostrando el final: los últimos meses reales y el mes pronosticado.
   useLayoutEffect(() => {
@@ -71,10 +102,13 @@ export default function LineChart({ title, periods, series }) {
     }
   }, [active, layout]);
 
+  // Si cambian los meses visibles, el mes activo puede quedar fuera.
+  useEffect(() => setActive(null), [periods.length]);
+
   const indexAt = (clientX, svg) => {
     const box = svg.getBoundingClientRect();
     if (periods.length < 2) return 0;
-    const i = Math.round((clientX - box.left - MARGIN.side) / layout.step);
+    const i = Math.round((clientX - box.left - layout.side) / layout.step);
     return Math.min(periods.length - 1, Math.max(0, i));
   };
 
@@ -87,9 +121,11 @@ export default function LineChart({ title, periods, series }) {
 
   const tooltipLeft = active === null ? 0 : layout.x(active);
   const tooltipFlip = active !== null && tooltipLeft > layout.width - 240;
+  const baseline = layout.y(Math.max(layout.ticks[0], 0));
+  const columnX = (i, c) => layout.x(i) + (c - (columns.length - 1) / 2) * (layout.bar + 2) - layout.bar / 2;
 
   return (
-    <figure className="chart">
+    <figure className="chart" ref={ref}>
       <figcaption className="chart__title" id={titleId}>
         {title}
       </figcaption>
@@ -97,7 +133,11 @@ export default function LineChart({ title, periods, series }) {
         {series.map((s) => (
           <li key={s.key}>
             <svg width="22" height="10" aria-hidden="true">
-              <line x1="1" y1="5" x2="21" y2="5" stroke={s.color} strokeWidth="2" strokeDasharray={s.dashed ? '4 3' : undefined} />
+              {asColumn(s) ? (
+                <rect x="6" y="0" width="10" height="10" rx="2" fill={s.color} />
+              ) : (
+                <line x1="1" y1="5" x2="21" y2="5" stroke={s.color} strokeWidth="2" strokeDasharray={s.dashed ? '4 3' : undefined} />
+              )}
             </svg>
             {s.label}
           </li>
@@ -114,6 +154,7 @@ export default function LineChart({ title, periods, series }) {
         <div className="chart__scroll" ref={scrollRef}>
           <div className="chart__canvas" style={{ width: `${layout.width}px` }}>
             <svg
+              className="chart__plot"
               width={layout.width}
               height={HEIGHT}
               role="img"
@@ -127,14 +168,30 @@ export default function LineChart({ title, periods, series }) {
               onBlur={() => setActive(null)}
             >
               {layout.ticks.map((tick) => (
-                <line key={tick} className="chart__grid" x1={0} x2={layout.width} y1={layout.y(tick)} y2={layout.y(tick)} />
+                <line
+                  key={tick}
+                  className={tick === 0 ? 'chart__grid chart__grid--zero' : 'chart__grid'}
+                  x1={0}
+                  x2={layout.width}
+                  y1={layout.y(tick)}
+                  y2={layout.y(tick)}
+                />
               ))}
               {periods.map((period, i) =>
                 showLabel(i, periods.length, layout) ? (
                   <XLabel key={period} period={period} x={layout.x(i)} showYear={i === 0 || period.endsWith('-01') || i === periods.length - 1} />
                 ) : null,
               )}
-              {series.map((s) => (
+              {columns.map((s, c) => (
+                <g key={s.key} fill={s.color}>
+                  {s.values.map((value, i) =>
+                    value === null || value === undefined ? null : (
+                      <path key={periods[i]} d={columnPath(columnX(i, c), layout.bar, baseline, layout.y(value))} />
+                    ),
+                  )}
+                </g>
+              ))}
+              {lines.map((s) => (
                 <path
                   key={s.key}
                   d={linePath(s.values, layout)}
@@ -146,10 +203,18 @@ export default function LineChart({ title, periods, series }) {
                   strokeDasharray={s.dashed ? '6 4' : undefined}
                 />
               ))}
+              {lines.map((s) =>
+                s.values.map((value, i) =>
+                  isolated(s.values, i) ? (
+                    <circle key={`${s.key}-${periods[i]}`} cx={layout.x(i)} cy={layout.y(value)} r="3.5" fill={s.color} />
+                  ) : null,
+                ),
+              )}
+              {showValues && <ValueLabels periods={periods} series={series} layout={layout} columnX={columnX} columns={columns} />}
               {active !== null && (
                 <g>
                   <line className="chart__crosshair" x1={layout.x(active)} x2={layout.x(active)} y1={MARGIN.top} y2={MARGIN.top + PLOT_H} />
-                  {series.map((s) =>
+                  {lines.map((s) =>
                     s.values[active] === null || s.values[active] === undefined ? null : (
                       <circle key={s.key} cx={layout.x(active)} cy={layout.y(s.values[active])} r="4" fill={s.color} className="chart__dot" />
                     ),
@@ -184,7 +249,9 @@ export default function LineChart({ title, periods, series }) {
       )}
     </figure>
   );
-}
+});
+
+export default LineChart;
 
 /** Mes abreviado y, en enero, en el primer y en el último mes, el año debajo: "abr" / "2022". */
 function XLabel({ period, x, showYear }) {
@@ -202,11 +269,63 @@ function XLabel({ period, x, showYear }) {
   );
 }
 
+/**
+ * Valor sobre cada punto o columna, en tinta (nunca en el color de la serie). En cada mes se ordenan de
+ * arriba abajo y se omite la etiqueta que quedaría a menos de MIN_VALUE_GAP de la anterior.
+ */
+function ValueLabels({ periods, series, layout, columnX, columns }) {
+  const labels = [];
+  periods.forEach((period, i) => {
+    const placed = [];
+    const candidates = series
+      .map((s) => ({ s, value: s.values[i] }))
+      .filter(({ value }) => value !== null && value !== undefined)
+      .map(({ s, value }) => {
+        const c = columns.indexOf(s);
+        const x = c >= 0 ? columnX(i, c) + layout.bar / 2 : layout.x(i);
+        return { key: `${s.key}-${period}`, x, y: layout.y(value) - (value < 0 ? -14 : 7), value };
+      })
+      .sort((a, b) => a.y - b.y);
+    candidates.forEach((label) => {
+      if (placed.every((other) => Math.abs(other.y - label.y) >= MIN_VALUE_GAP || Math.abs(other.x - label.x) > 40)) {
+        placed.push(label);
+        labels.push(label);
+      }
+    });
+  });
+  return (
+    <g className="chart__values">
+      {labels.map((label) => (
+        <text key={label.key} x={label.x} y={Math.max(10, label.y)} textAnchor="middle">
+          {formatNumber(Math.round(label.value))}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 /** Una etiqueta cada `labelEvery` meses y siempre la del último; se omite la que quedaría encima de esta. */
 function showLabel(i, count, layout) {
   const last = count - 1;
   if (i === last) return true;
   return i % layout.labelEvery === 0 && (last - i) * layout.step >= MIN_LABEL_GAP;
+}
+
+/** Columna con la punta redondeada (4 px) y la base recta sobre el eje. */
+function columnPath(x, width, base, top) {
+  const height = base - top;
+  if (Math.abs(height) < 0.5) return `M${x},${base}h${width}`;
+  const r = Math.min(4, width / 2, Math.abs(height));
+  if (height > 0) {
+    return `M${x},${base}V${top + r}Q${x},${top} ${x + r},${top}H${x + width - r}Q${x + width},${top} ${x + width},${top + r}V${base}Z`;
+  }
+  return `M${x},${base}V${top - r}Q${x},${top} ${x + r},${top}H${x + width - r}Q${x + width},${top} ${x + width},${top - r}V${base}Z`;
+}
+
+/** Un punto sin vecinos con valor no forma línea: se dibuja como círculo para que no desaparezca. */
+function isolated(values, i) {
+  const has = (j) => values[j] !== null && values[j] !== undefined;
+  return has(i) && !has(i - 1) && !has(i + 1);
 }
 
 /** Une los puntos con valor; un null corta la línea (p. ej. meses sin pronóstico). */
