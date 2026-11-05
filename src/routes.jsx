@@ -3,8 +3,9 @@ import RequireAuth from './auth/RequireAuth';
 import RequirePermission from './auth/RequirePermission';
 import Layout from './components/Layout';
 import ForbiddenPage from './pages/ForbiddenPage';
-import ForecastPage from './pages/ForecastPage';
-import HistoryPage from './pages/HistoryPage';
+import ForecastDetailPage from './pages/forecast/ForecastDetailPage';
+import ForecastPage from './pages/forecast/ForecastPage';
+import HistoryPage from './pages/history/HistoryPage';
 import HomePage from './pages/HomePage';
 import IndicatorsPage from './pages/IndicatorsPage';
 import LoginPage from './pages/LoginPage';
@@ -23,6 +24,7 @@ export default function AppRoutes() {
           </Route>
           <Route element={<RequirePermission permission="forecast:read" />}>
             <Route path="pronosticos" element={<ForecastPage />} />
+            <Route path="pronosticos/:id" element={<ForecastDetailPage />} />
           </Route>
           <Route element={<RequirePermission permission="indicators:read" />}>
             <Route path="indicadores" element={<IndicatorsPage />} />

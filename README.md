@@ -3,9 +3,8 @@
 Sierra Alta S.A.S. BIC · marca Eleven Pro. SPA en React + Vite que consume la API REST del backend
 Spring Boot (`sierra_alta_backend`).
 
-Estado actual: inicio de sesión, navegación por permisos y administración de usuarios completos.
-Históricos, pronósticos e indicadores son pantallas mínimas que muestran
-"Módulo en construcción" mientras el backend responda 501.
+Estado actual: inicio de sesión, navegación por permisos, administración de usuarios, históricos (consulta y
+carga), ejecución de pronósticos con sus resultados y comparación de métodos con el umbral de aceptación.
 
 ## Requisitos
 
@@ -65,16 +64,35 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
 - Los errores se muestran con el `detail` del problem+json del backend; los de validación, junto a
   cada campo (`aria-describedby`).
 
+## Pantallas de pronóstico
+
+- **Históricos** (`/historicos`): referencias con meses cargados y versión de datos; gráfico y tabla de la
+  producción mensual. Con `history:write`, carga de meses nuevos pegando "AAAA-MM;cantidad" por línea (o dos
+  columnas de Excel), con confirmación porque lo cargado no se borra. Los errores del backend
+  (`observations[2].value`) se muestran con el número de línea del texto.
+- **Pronósticos** (`/pronosticos`): con `forecast:execute`, formulario para elegir la referencia y de 1 a 4
+  métodos con sus parámetros; cada envío lleva una `Idempotency-Key` nueva. Los errores `methods[i].campo`
+  aparecen junto al parámetro de ese método. Debajo, las ejecuciones recientes.
+- **Resultado** (`/pronosticos/:id`): tabla comparativa (parámetros, pronóstico del mes siguiente, MAD,
+  MAPE, menor MAD y menor MAPE por separado y estado frente al umbral), gráfico de real y pronósticos con
+  detalle al pasar el mouse o con las flechas, y tabla de datos con los meses evaluados resaltados.
+- **Indicadores** (`/indicadores?ejecucion=7`): la misma tabla comparativa para cualquier ejecución.
+- El frontend no recalcula nada: MAD, MAPE, mejores y estado vienen del backend. Cada método tiene un color
+  fijo (paleta categórica validada para daltonismo) y la tabla de datos acompaña siempre al gráfico.
+
 ## Estructura
 
 ```
 src/
   api/          http.js (Axios: credenciales, CSRF, interceptores 401/403), auth.js, admin.js, modules.js
   auth/         AuthProvider, RequireAuth, RequirePermission
-  components/   Layout, Topbar, Sidebar, FormField, ConfirmDialog, ProblemAlert, Notice, ...
-  pages/        LoginPage, HomePage, HistoryPage, ForecastPage, IndicatorsPage, ForbiddenPage, NotFoundPage
+  components/   Layout, Topbar, Sidebar, FormField, ConfirmDialog, ProblemAlert, Notice, QueryState, LineChart, ...
+  pages/        LoginPage, HomePage, IndicatorsPage, ForbiddenPage, NotFoundPage, useModuleQuery, seriesOptions
+  pages/history/  HistoryPage, UploadForm, parseObservations
+  pages/forecast/ ForecastPage, ForecastForm, ForecastDetailPage, ComparisonTable, ExecutionsTable
   pages/admin/  UsersPage, UsersTable, CreateUserForm, SecurityEventsTable
   navigation.js secciones del menú y su permiso
+  format.js     números, porcentajes y meses en es-CO; nombres de métodos y estados
   routes.jsx, main.jsx, styles.css
   test/         pruebas y utilidades (simulan la API sustituyendo el adaptador de Axios)
 ```

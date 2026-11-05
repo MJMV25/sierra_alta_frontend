@@ -1,0 +1,97 @@
+import { formatNumber, formatPercent, formatPeriod, formatParameters, METHOD_LABELS, STATUS_LABELS } from '../../format';
+
+/**
+ * Tabla comparativa de una ejecución (GET /indicators/executions/{id}). Ni el MAD ni el MAPE mandan: se
+ * marca el menor de cada uno por separado (ADR 07). Con `detail` (la ejecución completa) agrega los
+ * parámetros y el pronóstico del mes siguiente de cada método.
+ */
+export default function ComparisonTable({ comparison, detail = null, unit = '' }) {
+  const methodOf = (code) => detail?.methods.find((m) => m.method === code);
+  const nextPeriod = detail?.methods[0]?.nextForecast?.period;
+  const threshold = comparison.mapeThresholdPercent;
+
+  return (
+    <>
+      <p className="panel__text">
+        {comparison.evaluationFrom
+          ? `Evaluado de ${formatPeriod(comparison.evaluationFrom)} a ${formatPeriod(comparison.evaluationTo)}, los mismos meses para todos los métodos.`
+          : 'Ningún mes tuvo pronóstico de todos los métodos: MAD y MAPE no son calculables.'}{' '}
+        {threshold === null
+          ? 'Esta ejecución es anterior al umbral de aceptación: sin criterio definido.'
+          : `Un método cumple si su MAPE es menor que ${formatPercent(threshold)}.`}
+      </p>
+      <div className="table-wrap">
+        <table className="table">
+          <caption className="visually-hidden">Comparación de métodos por MAD y MAPE</caption>
+          <thead>
+            <tr>
+              <th scope="col">Método</th>
+              {detail && <th scope="col">Parámetros</th>}
+              {nextPeriod && (
+                <th scope="col" className="table__number">
+                  Pronóstico {formatPeriod(nextPeriod)}
+                </th>
+              )}
+              <th scope="col" className="table__number">
+                MAD{unit && ` (${unit})`}
+              </th>
+              <th scope="col" className="table__number">
+                MAPE
+              </th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.methods.map((row) => {
+              const status = STATUS_LABELS[row.status] ?? { label: row.status, tone: 'off', icon: '' };
+              const method = methodOf(row.method);
+              return (
+                <tr key={row.method}>
+                  <th scope="row" className="table__strong">
+                    {METHOD_LABELS[row.method] ?? row.method}
+                  </th>
+                  {detail && <td className="table__muted">{method ? formatParameters(method) : '—'}</td>}
+                  {nextPeriod && <td className="table__number">{formatNumber(method?.nextForecast?.forecast)}</td>}
+                  <td className="table__number">
+                    {row.mad === null ? 'No calculable' : formatNumber(row.mad)}
+                    {row.bestByMad && <span className="tag tag--best">Menor MAD</span>}
+                  </td>
+                  <td className="table__number">
+                    {formatPercent(row.mapePercent)}
+                    {row.bestByMape && <span className="tag tag--best">Menor MAPE</span>}
+                  </td>
+                  <td>
+                    <span className={`badge badge--${status.tone}`}>
+                      <span aria-hidden="true">{status.icon}</span> {status.label}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Warnings comparison={comparison} />
+    </>
+  );
+}
+
+function Warnings({ comparison }) {
+  const notes = comparison.methods
+    .filter((row) => row.mapeExcluded > 0)
+    .map(
+      (row) =>
+        `${METHOD_LABELS[row.method] ?? row.method}: ${row.mapeExcluded} ${row.mapeExcluded === 1 ? 'mes' : 'meses'} con producción 0 no ${row.mapeExcluded === 1 ? 'entra' : 'entran'} al MAPE (sí al MAD).`,
+    );
+  if (comparison.methods.length > 1) {
+    notes.push('El MAD de cada método depende de los meses evaluados, que cambian según los métodos que se ejecuten juntos.');
+  }
+  if (notes.length === 0) return null;
+  return (
+    <ul className="notes">
+      {notes.map((note) => (
+        <li key={note}>{note}</li>
+      ))}
+    </ul>
+  );
+}

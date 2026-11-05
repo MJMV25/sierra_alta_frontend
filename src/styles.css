@@ -15,6 +15,12 @@
   --color-warning: #b54708;
   --color-warning-soft: #fffaeb;
   --color-info-soft: #eff4ff;
+  /* Gráficos: real en tinta; métodos en el orden fijo de la paleta categórica. */
+  --chart-actual: #111214;
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
   --radius: 8px;
   --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -279,21 +285,225 @@ a {
   color: #1d3a8a;
 }
 
-.construction {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
-  border: 1px dashed #c9cdd3;
-  border-radius: var(--radius);
-  background: var(--color-page);
-  color: var(--color-ink-soft);
-  font-weight: 500;
+/* ---------- Pronósticos e históricos ---------- */
+.page__back {
+  margin: 0 0 8px;
+  font-size: 14px;
 }
 
-.construction__icon {
-  font-size: 24px;
+.panel__text {
+  margin: 0 0 16px;
+  color: var(--color-ink-soft);
+}
+
+.alert__list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+textarea.field__control {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.table__number {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table__sub {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.table__row--selected th,
+.table__row--selected td {
+  background: var(--color-info-soft);
+}
+
+.table__row--evaluated td {
+  background: #f8f9fb;
+}
+
+.table--compact th,
+.table--compact td {
+  padding: 6px 12px;
+}
+
+.table-wrap--scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.tag--best {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-color: #abefc6;
+}
+
+.details {
+  margin-top: 16px;
+}
+
+.details summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.notes {
+  margin: 16px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--color-ink-soft);
+}
+
+.methods {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.methods legend {
+  margin-bottom: 8px;
+}
+
+.method {
+  padding: 12px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+}
+
+.method--off {
+  background: var(--color-page);
+}
+
+.method__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.method__params {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  align-items: start;
+}
+
+.method__note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* ---------- Gráfico ----------
+   Una línea por serie con su color fijo; el real va en tinta y los métodos punteados.
+   Identidad nunca solo por color: leyenda, trazo y tabla de datos. */
+.chart {
+  margin: 0;
+}
+
+.chart__title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--color-ink-soft);
+}
+
+.chart__legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart__plot {
+  position: relative;
+}
+
+.chart__plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart__plot svg:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.chart__grid {
+  stroke: var(--color-line);
+  stroke-width: 1;
+}
+
+.chart__axis {
+  fill: var(--color-muted);
+  font-size: 12px;
+}
+
+.chart__crosshair {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+}
+
+.chart__dot {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+.chart__tooltip {
+  position: absolute;
+  top: 8px;
+  min-width: 200px;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.chart__tooltip-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.chart__tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-ink-soft);
+}
+
+.chart__tooltip-row strong {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
 }
 
 /* ---------- Carga ---------- */

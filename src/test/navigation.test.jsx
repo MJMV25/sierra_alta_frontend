@@ -1,12 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { UNDER_CONSTRUCTION_MESSAGE } from '../components/UnderConstruction';
+import { fixtures } from './fixtures';
 import { mockBackend, problem, renderApp, session } from './utils';
-
-const notImplemented = (req) =>
-  /^\/api\/v1\/(history|forecasts|indicators)/.test(req.url)
-    ? { status: 501, data: problem(501, 'not-implemented', 'Funcionalidad no implementada.') }
-    : undefined;
 
 async function menuLabels() {
   const nav = await screen.findByRole('navigation', { name: 'Menú principal' });
@@ -81,30 +76,27 @@ describe('Protección de rutas', () => {
   });
 });
 
-describe('Módulos en construcción', () => {
-  it('históricos muestra el aviso ante 501 y "Cargar históricos" solo con history:write', async () => {
-    mockBackend({ me: session('ANALYST'), handler: notImplemented });
-    renderApp('/historicos');
-    expect(await screen.findByText(UNDER_CONSTRUCTION_MESSAGE)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cargar históricos' })).toBeInTheDocument();
-  });
-
-  it('el supervisor no ve "Cargar históricos" ni "Ejecutar pronóstico"', async () => {
-    mockBackend({ me: session('SUPERVISOR'), handler: notImplemented });
+describe('Acciones según permisos', () => {
+  it('"Cargar históricos" solo con history:write y "Ejecutar pronóstico" solo con forecast:execute', async () => {
+    mockBackend({ me: session('SUPERVISOR'), handler: fixtures });
     const { unmount } = renderApp('/historicos');
-    await screen.findByText(UNDER_CONSTRUCTION_MESSAGE);
+    await screen.findByRole('heading', { name: 'Referencias' });
     expect(screen.queryByRole('button', { name: 'Cargar históricos' })).not.toBeInTheDocument();
     unmount();
 
     renderApp('/pronosticos');
-    await screen.findByText(UNDER_CONSTRUCTION_MESSAGE);
+    await screen.findByRole('heading', { name: 'Ejecuciones recientes' });
     expect(screen.queryByRole('button', { name: 'Ejecutar pronóstico' })).not.toBeInTheDocument();
   });
 
-  it('el planeador ve "Ejecutar pronóstico"', async () => {
-    mockBackend({ me: session('PLANNER'), handler: notImplemented });
+  it('el analista ve "Cargar históricos" y el planeador "Ejecutar pronóstico"', async () => {
+    mockBackend({ me: session('ANALYST'), handler: fixtures });
+    const { unmount } = renderApp('/historicos');
+    expect(await screen.findByRole('button', { name: 'Cargar históricos' })).toBeInTheDocument();
+    unmount();
+
+    mockBackend({ me: session('PLANNER'), handler: fixtures });
     renderApp('/pronosticos');
-    await screen.findByText(UNDER_CONSTRUCTION_MESSAGE);
-    expect(screen.getByRole('button', { name: 'Ejecutar pronóstico' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Ejecutar pronóstico' })).toBeInTheDocument();
   });
 });
