@@ -20,6 +20,16 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: './src/test/setup.js',
       css: false,
+      // Con cobertura y en CI las pruebas de interfaz tardan más que los 5 s por defecto.
+      testTimeout: 15000,
+      // npm run test:coverage → coverage/ (index.html, lcov.info, coverage-summary.json).
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'text-summary', 'json-summary', 'html', 'lcov'],
+        reportsDirectory: './coverage',
+        include: ['src/**/*.{js,jsx}'],
+        exclude: ['src/test/**', 'src/main.jsx'],
+      },
     },
   };
 });
