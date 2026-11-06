@@ -7,16 +7,14 @@ import { AuthProvider } from '../auth/AuthProvider';
 import AppRoutes from '../routes';
 
 export const PERMISSIONS = {
-  ADMIN: ['users:manage'],
-  PLANNER: ['history:read', 'forecast:execute', 'forecast:read', 'indicators:read'],
-  SUPERVISOR: ['history:read', 'forecast:read', 'indicators:read'],
-  ANALYST: ['history:read', 'history:write', 'forecast:execute', 'forecast:read', 'indicators:read'],
+  ADMIN: ['users:manage', 'history:read', 'history:write', 'forecast:execute', 'forecast:read', 'indicators:read', 'forecast:export'],
+  PLANNER: ['history:read', 'forecast:read', 'indicators:read', 'forecast:export'],
+  ANALYST: ['history:read', 'history:write', 'forecast:read', 'indicators:read'],
 };
 
 const ROLE_NAMES = {
   ADMIN: 'Administrador del sistema',
   PLANNER: 'Planeador de producción',
-  SUPERVISOR: 'Supervisor de línea',
   ANALYST: 'Analista de datos',
 };
 

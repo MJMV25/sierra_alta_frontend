@@ -6,7 +6,6 @@ import { mockBackend, PERMISSIONS, problem, renderApp, session } from './utils';
 const ROLES = [
   { code: 'ADMIN', name: 'Administrador del sistema', permissions: PERMISSIONS.ADMIN },
   { code: 'PLANNER', name: 'Planeador de producción', permissions: PERMISSIONS.PLANNER },
-  { code: 'SUPERVISOR', name: 'Supervisor de línea', permissions: PERMISSIONS.SUPERVISOR },
   { code: 'ANALYST', name: 'Analista de datos', permissions: PERMISSIONS.ANALYST },
 ];
 
@@ -48,20 +47,20 @@ describe('Administración de usuarios', () => {
     const ui = userEvent.setup();
     const requests = adminBackend((req) =>
       req.method === 'POST' && req.url === '/api/v1/admin/users'
-        ? { status: 201, data: user(3, 'nuevo.usuario', 'SUPERVISOR') }
+        ? { status: 201, data: user(3, 'nuevo.usuario', 'ANALYST') }
         : undefined,
     );
     renderApp('/admin/usuarios');
 
     await ui.type(await screen.findByLabelText('Usuario'), 'Nuevo.Usuario');
     await ui.type(screen.getByLabelText('Contraseña'), 'clave-segura-123');
-    await ui.selectOptions(screen.getByLabelText('Rol'), 'SUPERVISOR');
+    await ui.selectOptions(screen.getByLabelText('Rol'), 'ANALYST');
     await ui.click(screen.getByRole('button', { name: 'Crear usuario' }));
 
     expect(await screen.findByText(/Usuario "nuevo.usuario" creado/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Rol de nuevo.usuario')).toHaveValue('SUPERVISOR');
+    expect(screen.getByLabelText('Rol de nuevo.usuario')).toHaveValue('ANALYST');
     const post = requests.find((r) => r.method === 'POST' && r.url === '/api/v1/admin/users');
-    expect(post.data).toEqual({ username: 'Nuevo.Usuario', password: 'clave-segura-123', role: 'SUPERVISOR' });
+    expect(post.data).toEqual({ username: 'Nuevo.Usuario', password: 'clave-segura-123', role: 'ANALYST' });
     expect(post.headers.get('X-XSRF-TOKEN')).toBe('csrf-inicial');
   });
 

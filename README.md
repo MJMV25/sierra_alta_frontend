@@ -3,9 +3,8 @@
 Sierra Alta S.A.S. BIC · marca Eleven Pro. SPA en React + Vite que consume la API REST del backend
 Spring Boot (`sierra_alta_backend`).
 
-Estado actual: inicio de sesión, navegación por permisos y administración de usuarios completos.
-Históricos, pronósticos e indicadores son pantallas mínimas que muestran
-"Módulo en construcción" mientras el backend responda 501.
+Estado actual: inicio de sesión, navegación por permisos, administración de usuarios, históricos (consulta y
+carga), ejecución de pronósticos con sus resultados y comparación de métodos con el umbral de aceptación.
 
 ## Requisitos
 
@@ -24,7 +23,13 @@ npm install      # instala dependencias
 npm run dev      # servidor de desarrollo en http://localhost:5173
 npm run build    # compilación de producción en dist/
 npm test         # pruebas (Vitest + React Testing Library)
+npm run test:coverage  # pruebas con reporte de cobertura en coverage/index.html
 ```
+
+Integración continua: `.github/workflows/tests.yml` corre en cada push (cualquier rama) y en cada pull
+request. Instala con `npm ci`, ejecuta las pruebas con cobertura, compila y publica el reporte como
+artefacto `cobertura-frontend`, con un resumen de líneas, ramas, sentencias y funciones en la página de la
+ejecución.
 
 ## Configuración
 
@@ -42,10 +47,9 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
 
 | Usuario      | Rol                         | Ve en el menú |
 |--------------|-----------------------------|---------------|
-| `admin`      | Administrador del sistema   | Usuarios |
-| `planeador`  | Planeador de producción     | Históricos, Pronósticos (con "Ejecutar pronóstico"), Indicadores |
-| `supervisor` | Supervisor de línea         | Históricos, Pronósticos, Indicadores (solo consulta) |
-| `analista`   | Analista de datos           | Históricos (con "Cargar históricos"), Pronósticos (con "Ejecutar pronóstico"), Indicadores |
+| `admin`      | Administrador del sistema   | Todo: Históricos (con "Cargar históricos"), Pronósticos (con "Ejecutar pronóstico"; es el único que ejecuta), Indicadores y Usuarios |
+| `planeador`  | Planeador de producción     | Históricos, Pronósticos e Indicadores (consulta y exporta: Excel, PDF, CSV, PNG/SVG) |
+| `analista`   | Analista de datos           | Históricos (con "Cargar históricos"), Pronósticos e Indicadores (consulta) |
 
 ## Seguridad en el cliente
 
@@ -65,16 +69,51 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
 - Los errores se muestran con el `detail` del problem+json del backend; los de validación, junto a
   cada campo (`aria-describedby`).
 
+## Pantallas de pronóstico
+
+- **Históricos** (`/historicos`): referencias con meses cargados y versión de datos; gráfico y tabla de la
+  producción mensual. Con `history:write`, carga de meses nuevos pegando "AAAA-MM;cantidad" por línea (o dos
+  columnas de Excel), con confirmación porque lo cargado no se borra. Los errores del backend
+  (`observations[2].value`) se muestran con el número de línea del texto.
+- **Pronósticos** (`/pronosticos`): con `forecast:execute`, formulario para elegir la referencia y de 1 a 4
+  métodos con sus parámetros y el periodo histórico (desde/hasta; por defecto toda la serie); cada envío lleva una `Idempotency-Key` nueva. Los errores `methods[i].campo`
+  aparecen junto al parámetro de ese método. Debajo, las ejecuciones recientes.
+- **Resultado** (`/pronosticos/:id`), el dashboard de la ejecución:
+  - Ficha: periodo histórico usado, fecha, quién ejecutó, versión de datos y de cálculo.
+  - Comparación: tabla (parámetros, pronóstico siguiente, MAD, MAPE, menor de cada uno y estado frente al
+    umbral) que se ordena por método, menor MAD o menor MAPE; debajo, barras de MAD y de MAPE en gráficos
+    separados (no comparten eje), con el umbral marcado en el MAPE.
+  - Gráfico personalizable: mostrar u ocultar series, tipo líneas, columnas o combinado (real en columnas y
+    métodos en línea), valores sobre los puntos, eje Y desde 0 o ajustado (las columnas siempre desde 0),
+    rango de meses visible y "Restablecer vista".
+  - Tabla de datos con los meses evaluados y el mes pronosticado resaltados.
+  - Con `forecast:export` (administrador y planeador): Excel (hojas Resumen, con el gráfico, y Datos), PDF
+    (impresión del navegador; el gráfico sale completo como imagen y sin menú ni controles), tabla en CSV
+    (";" y coma decimal) y gráfico en PNG o SVG. El contenido sigue la respuesta 23 de Industrial; ExcelJS
+    se descarga solo al exportar.
+- **Indicadores** (`/indicadores?ejecucion=7`): la misma tabla comparativa para cualquier ejecución.
+- Gráfico: cada mes ocupa al menos 34 px; con más meses de los que caben, la zona del gráfico se desplaza
+  hacia los lados (el eje Y queda fijo) y abre en los meses más recientes. Etiquetas del eje X sin
+  superponerse, con el año en enero.
+- Responsive: en pantallas de hasta 640 px las tablas de comparación, ejecuciones y referencias se muestran
+  como tarjetas; la tabla de datos mes a mes conserva el encabezado y la columna del mes fijos al desplazarse.
+- El frontend no recalcula nada: MAD, MAPE, mejores y estado vienen del backend. Cada método tiene un color
+  fijo (paleta categórica validada para daltonismo) y la tabla de datos acompaña siempre al gráfico.
+
 ## Estructura
 
 ```
 src/
   api/          http.js (Axios: credenciales, CSRF, interceptores 401/403), auth.js, admin.js, modules.js
   auth/         AuthProvider, RequireAuth, RequirePermission
-  components/   Layout, Topbar, Sidebar, FormField, ConfirmDialog, ProblemAlert, Notice, ...
-  pages/        LoginPage, HomePage, HistoryPage, ForecastPage, IndicatorsPage, ForbiddenPage, NotFoundPage
+  export/       chartImage (gráfico a SVG/PNG), report (contenido común y CSV), excel (ExcelJS)
+  components/   Layout, Topbar, Sidebar, FormField, ConfirmDialog, ProblemAlert, Notice, QueryState, LineChart, ...
+  pages/        LoginPage, HomePage, IndicatorsPage, ForbiddenPage, NotFoundPage, useModuleQuery, seriesOptions
+  pages/history/  HistoryPage, UploadForm, parseObservations
+  pages/forecast/ ForecastPage, ForecastForm, ForecastDetailPage, ComparisonTable, IndicatorBars, ExecutionsTable
   pages/admin/  UsersPage, UsersTable, CreateUserForm, SecurityEventsTable
   navigation.js secciones del menú y su permiso
+  format.js     números, porcentajes y meses en es-CO; nombres de métodos y estados
   routes.jsx, main.jsx, styles.css
   test/         pruebas y utilidades (simulan la API sustituyendo el adaptador de Axios)
 ```
