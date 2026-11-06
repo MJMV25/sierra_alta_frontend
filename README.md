@@ -32,7 +32,8 @@ npm run test:coverage  # pruebas con reporte de cobertura en coverage/index.html
 Integración continua: `.github/workflows/tests.yml` corre en cada push (cualquier rama) y en cada pull
 request. Instala con `npm ci`, ejecuta las pruebas con cobertura, compila y publica el reporte como
 artefacto `cobertura-frontend`, con un resumen de líneas, ramas, sentencias y funciones en la página de la
-ejecución.
+ejecución. Exige un mínimo de 80 % de líneas cubiertas (`coverage.thresholds` en `vite.config.js`): por
+debajo, `npm run test:coverage` y el pipeline fallan.
 
 ## Configuración
 
