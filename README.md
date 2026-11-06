@@ -1,5 +1,8 @@
 # Sistema web de pronóstico de producción — Frontend
 
+[![Tests](https://github.com/MJMV25/sierra_alta_frontend/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/MJMV25/sierra_alta_frontend/actions/workflows/tests.yml)
+[![Cobertura](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/MJMV25/sierra_alta_frontend/badges/coverage.json)](https://github.com/MJMV25/sierra_alta_frontend/actions/workflows/tests.yml)
+
 Sierra Alta S.A.S. BIC · marca Eleven Pro. SPA en React + Vite que consume la API REST del backend
 Spring Boot (`sierra_alta_backend`).
 
