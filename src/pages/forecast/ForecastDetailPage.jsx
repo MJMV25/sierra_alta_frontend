@@ -12,6 +12,9 @@ import {
   formatNumber,
   formatPeriod,
   MEASURE_LABELS,
+  periodHeader,
+  periodWord,
+  TEST_PERIODICITY,
   METHOD_LABELS,
   METHOD_ORDER,
   METHOD_SHORT_LABELS,
@@ -96,7 +99,8 @@ function Detail({ detail }) {
             Pronóstico n.º {detail.id}: {detail.productName}
           </h1>
           <p className="page__subtitle">
-            Periodo histórico de {formatPeriod(periodFrom)} a {formatPeriod(periodTo)} ({detail.actuals.length} meses) ·
+            Periodo histórico de {formatPeriod(periodFrom, detail.periodicity)} a {formatPeriod(periodTo, detail.periodicity)} (
+            {detail.actuals.length} {periodWord(detail.actuals.length, detail.periodicity)}) ·
             ejecutado el {formatDateTime(detail.executedAt)}
             {detail.executedByUsername && ` por ${detail.executedByUsername}`} · versión de datos {detail.dataVersion} ·
             versión de cálculo {detail.calculationVersion}
@@ -232,7 +236,7 @@ function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
             <select className="field__control field__control--compact" value={view.from} onChange={(event) => change({ from: event.target.value })}>
               {table.periods.map((period, i) => (
                 <option key={period} value={period} disabled={i > end}>
-                  {formatPeriod(period)}
+                  {formatPeriod(period, detail.periodicity)}
                 </option>
               ))}
             </select>
@@ -242,7 +246,7 @@ function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
             <select className="field__control field__control--compact" value={view.to} onChange={(event) => change({ to: event.target.value })}>
               {table.periods.map((period, i) => (
                 <option key={period} value={period} disabled={i < start}>
-                  {formatPeriod(period)}
+                  {formatPeriod(period, detail.periodicity)}
                 </option>
               ))}
             </select>
@@ -290,7 +294,8 @@ function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
       ) : (
         <LineChart
           ref={chartRef}
-          title={`${measure} mensual (${detail.unit})`}
+          title={`${measure}${detail.periodicity === TEST_PERIODICITY ? ' por periodo' : ' mensual'} (${detail.unit})`}
+          periodicity={detail.periodicity}
           periods={periods}
           series={series}
           type={view.type}
@@ -307,16 +312,18 @@ function DataTable({ detail, measure, canExport }) {
   const table = forecastTable(detail);
   return (
     <details className="details details--print-open" open>
-      <summary>Ver tabla de datos ({table.periods.length} meses)</summary>
+      <summary>
+        Ver tabla de datos ({table.periods.length} {periodWord(table.periods.length, detail.periodicity)})
+      </summary>
       <div className="table-tools">
         <p className="table-legend">
           <span className="table-legend__item">
             <span className="table-legend__swatch table-legend__swatch--evaluated" aria-hidden="true" />
-            Mes que entra al MAD y al MAPE
+            {periodHeader(detail.periodicity).replace(' (t)', '')} que entra al MAD y al MAPE
           </span>
           <span className="table-legend__item">
             <span className="table-legend__swatch table-legend__swatch--next" aria-hidden="true" />
-            Mes pronosticado (sin dato real)
+            {periodHeader(detail.periodicity).replace(' (t)', '')} pronosticado (sin dato real)
           </span>
         </p>
         {canExport && (
@@ -331,10 +338,10 @@ function DataTable({ detail, measure, canExport }) {
       </div>
       <div className="table-wrap table-wrap--scroll">
         <table className="table table--compact table--sticky">
-          <caption className="visually-hidden">{measure} real y pronóstico de cada método por mes</caption>
+          <caption className="visually-hidden">{measure} real y pronóstico de cada método por periodo</caption>
           <thead>
             <tr>
-              <th scope="col">Mes</th>
+              <th scope="col">{periodHeader(detail.periodicity)}</th>
               <th scope="col" className="table__number">
                 Real ({detail.unit})
               </th>
@@ -352,7 +359,7 @@ function DataTable({ detail, measure, canExport }) {
                 key={period}
                 className={table.isNext[i] ? 'table__row--next' : table.evaluated[i] ? 'table__row--evaluated' : undefined}
               >
-                <th scope="row">{formatPeriod(period)}</th>
+                <th scope="row">{formatPeriod(period, detail.periodicity)}</th>
                 <td className="table__number">{formatNumber(table.actuals[i])}</td>
                 {table.methods.map((column) => (
                   <td key={column.method} className="table__number">

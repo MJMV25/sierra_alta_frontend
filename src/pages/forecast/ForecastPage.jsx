@@ -14,7 +14,7 @@ export default function ForecastPage() {
     <div className="page">
       <header className="page__header">
         <h1 className="page__title">Pronósticos</h1>
-        <p className="page__subtitle">Pronóstico de la producción del mes siguiente con cuatro métodos.</p>
+        <p className="page__subtitle">Pronóstico del periodo siguiente con cinco métodos, comparados por MAD y MAPE.</p>
       </header>
       {hasPermission('forecast:execute') && <NewForecast />}
       <section className="panel" aria-labelledby="executions-title">

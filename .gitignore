@@ -4,3 +4,16 @@ dist
 .env.local
 *.log
 coverage
+
+# Documentos de Office y PDF (se entregan fuera del repositorio)
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.xlsm
+*.pdf
+~$*
+
+# Archivos del sistema
+desktop.ini
+Thumbs.db

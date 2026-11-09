@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent, formatPeriod, formatParameters, METHOD_LABELS, STATUS_LABELS } from '../../format';
+import { formatNumber, formatPercent, formatPeriod, formatParameters, METHOD_LABELS, periodWord, STATUS_LABELS } from '../../format';
 
 /** Orden de las filas: el de los métodos, o de menor a mayor MAD o MAPE (los no calculables al final). */
 export const SORT_OPTIONS = { method: 'Orden de los métodos', mad: 'Menor MAD primero', mape: 'Menor MAPE primero' };
@@ -15,16 +15,18 @@ export function sortRows(rows, sortBy) {
  * marca el menor de cada uno por separado (ADR 07). Con `detail` (la ejecución completa) agrega los
  * parámetros y el pronóstico del mes siguiente de cada método. `sortBy` ordena las filas (SORT_OPTIONS).
  */
-export default function ComparisonTable({ comparison, detail = null, unit = '', sortBy = 'method' }) {
+export default function ComparisonTable({ comparison, detail = null, unit = '', sortBy = 'method', periodicity: given }) {
   const methodOf = (code) => detail?.methods.find((m) => m.method === code);
   const nextPeriod = detail?.methods[0]?.nextForecast?.period;
   const threshold = comparison.mapeThresholdPercent;
+  // Del detalle o, en la pantalla Indicadores, de la fila de la ejecución (casos de prueba: "t = n").
+  const periodicity = detail?.periodicity ?? given;
 
   return (
     <>
       <p className="panel__text">
         {comparison.evaluationFrom
-          ? `Evaluado de ${formatPeriod(comparison.evaluationFrom)} a ${formatPeriod(comparison.evaluationTo)}, los mismos meses para todos los métodos.`
+          ? `Evaluado de ${formatPeriod(comparison.evaluationFrom, periodicity)} a ${formatPeriod(comparison.evaluationTo, periodicity)}, los mismos ${periodWord(2, periodicity)} para todos los métodos.`
           : 'Ningún mes tuvo pronóstico de todos los métodos: MAD y MAPE no son calculables.'}{' '}
         {threshold === null
           ? 'Esta ejecución es anterior al umbral de aceptación: sin criterio definido.'
@@ -39,7 +41,7 @@ export default function ComparisonTable({ comparison, detail = null, unit = '', 
               {detail && <th scope="col">Parámetros</th>}
               {nextPeriod && (
                 <th scope="col" className="table__number">
-                  Pronóstico {formatPeriod(nextPeriod)}
+                  Pronóstico {formatPeriod(nextPeriod, periodicity)}
                 </th>
               )}
               <th scope="col" className="table__number">
@@ -66,7 +68,7 @@ export default function ComparisonTable({ comparison, detail = null, unit = '', 
                     </td>
                   )}
                   {nextPeriod && (
-                    <td className="table__number" data-label={`Pronóstico ${formatPeriod(nextPeriod)}`}>
+                    <td className="table__number" data-label={`Pronóstico ${formatPeriod(nextPeriod, periodicity)}`}>
                       {formatNumber(method?.nextForecast?.forecast)}
                     </td>
                   )}
@@ -111,7 +113,7 @@ function Warnings({ comparison }) {
     ? [`En todos los métodos, ${zeroMonths(excluded[0].mapeExcluded)}`]
     : excluded.map((row) => `${METHOD_LABELS[row.method] ?? row.method}: ${zeroMonths(row.mapeExcluded)}`);
   if (comparison.methods.length > 1) {
-    notes.push('El MAD de cada método depende de los meses evaluados, que cambian según los métodos que se ejecuten juntos.');
+    notes.push('El MAD de cada método depende de los periodos evaluados, que cambian según los métodos que se ejecuten juntos.');
   }
   if (notes.length === 0) return null;
   return (

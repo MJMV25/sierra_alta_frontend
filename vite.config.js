@@ -29,6 +29,8 @@ export default defineConfig(({ mode }) => {
         reportsDirectory: './coverage',
         include: ['src/**/*.{js,jsx}'],
         exclude: ['src/test/**', 'src/main.jsx'],
+        // Mínimo de cobertura de líneas: por debajo, test:coverage (y el pipeline) fallan.
+        thresholds: { lines: 80 },
       },
     },
   };
