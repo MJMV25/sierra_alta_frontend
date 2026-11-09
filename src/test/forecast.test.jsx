@@ -21,8 +21,8 @@ describe('Ejecutar pronóstico', () => {
 
     await ui.click(screen.getByRole('checkbox', { name: 'Promedio móvil ponderado' }));
     await ui.click(screen.getByRole('checkbox', { name: 'Suavizamiento con tendencia (Holt)' }));
-    await ui.clear(screen.getByLabelText('Meses a promediar (n)'));
-    await ui.type(screen.getByLabelText('Meses a promediar (n)'), '1');
+    await ui.clear(screen.getByLabelText('Periodos a promediar (n)'));
+    await ui.type(screen.getByLabelText('Periodos a promediar (n)'), '1');
     await ui.clear(screen.getByLabelText('α (nivel)'));
     await ui.type(screen.getByLabelText('α (nivel)'), '0,0025');
     await ui.click(screen.getByRole('button', { name: 'Ejecutar pronóstico' }));
@@ -36,6 +36,7 @@ describe('Ejecutar pronóstico', () => {
       methods: [
         { method: 'SIMPLE_MOVING_AVERAGE', periods: 1 },
         { method: 'EXPONENTIAL_SMOOTHING', alpha: 0.0025 },
+        { method: 'LINEAR_REGRESSION' },
       ],
     });
     expect(post.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
@@ -77,6 +78,7 @@ describe('Ejecutar pronóstico', () => {
       'Promedio móvil ponderado',
       'Suavizamiento exponencial',
       'Suavizamiento con tendencia (Holt)',
+      'Regresión lineal',
     ]) {
       await ui.click(await screen.findByRole('checkbox', { name }));
     }
@@ -91,7 +93,7 @@ describe('Ejecutar pronóstico', () => {
     renderApp('/pronosticos');
 
     await ui.selectOptions(await screen.findByLabelText('Cantidad de pesos'), '2');
-    expect(screen.getByLabelText('Peso K0 (mes más reciente)')).toHaveValue('0,5');
+    expect(screen.getByLabelText('Peso K0 (dato más reciente)')).toHaveValue('0,5');
     expect(screen.queryByLabelText('Peso K2')).not.toBeInTheDocument();
     expect(screen.getByText(/Suma actual: 0,8/)).toBeInTheDocument();
   });

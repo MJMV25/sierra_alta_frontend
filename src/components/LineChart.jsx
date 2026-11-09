@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { formatNumber, formatPeriod } from '../format';
+import { formatNumber, formatPeriod, periodIndex, periodWord, TEST_PERIODICITY } from '../format';
 
 const HEIGHT = 300;
 const MARGIN = { top: 22, bottom: 44, side: 28 };
@@ -33,7 +33,7 @@ const SHORT_MONTH = new Intl.DateTimeFormat('es-CO', { month: 'short', timeZone:
  * va aparte (accesible). El `ref` apunta a la figura, para exportarla como imagen.
  */
 const LineChart = forwardRef(function LineChart(
-  { title, periods, series, type = 'line', columnKeys = [], showValues = false, zeroBased = true },
+  { title, periods, series, type = 'line', columnKeys = [], showValues = false, zeroBased = true, periodicity },
   ref,
 ) {
   const titleId = useId();
@@ -179,7 +179,7 @@ const LineChart = forwardRef(function LineChart(
               ))}
               {periods.map((period, i) =>
                 showLabel(i, periods.length, layout) ? (
-                  <XLabel key={period} period={period} x={layout.x(i)} showYear={i === 0 || period.endsWith('-01') || i === periods.length - 1} />
+                  <XLabel key={period} period={period} periodicity={periodicity} x={layout.x(i)} showYear={i === 0 || period.endsWith('-01') || i === periods.length - 1} />
                 ) : null,
               )}
               {columns.map((s, c) => (
@@ -228,7 +228,7 @@ const LineChart = forwardRef(function LineChart(
                 role="status"
                 style={{ left: `${tooltipLeft}px`, transform: tooltipFlip ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)' }}
               >
-                <p className="chart__tooltip-title">{formatPeriod(periods[active])}</p>
+                <p className="chart__tooltip-title">{formatPeriod(periods[active], periodicity)}</p>
                 {series.map((s) => (
                   <p key={s.key} className="chart__tooltip-row">
                     <span className="chart__swatch" style={{ background: s.color }} aria-hidden="true" />
@@ -243,7 +243,7 @@ const LineChart = forwardRef(function LineChart(
       </div>
       {layout.scrolls && (
         <p className="chart__hint" id={hintId}>
-          {periods.length} meses: desplace el gráfico hacia los lados para ver todos (también con las flechas del
+          {periods.length} {periodWord(periods.length, periodicity)}: desplace el gráfico hacia los lados para ver todos (también con las flechas del
           teclado).
         </p>
       )}
@@ -253,8 +253,18 @@ const LineChart = forwardRef(function LineChart(
 
 export default LineChart;
 
-/** Mes abreviado y, en enero, en el primer y en el último mes, el año debajo: "abr" / "2022". */
-function XLabel({ period, x, showYear }) {
+/**
+ * Mes abreviado y, en enero, en el primer y en el último mes, el año debajo: "abr" / "2022". En una serie
+ * de prueba del Excel (PERIODO), solo el número t.
+ */
+function XLabel({ period, periodicity, x, showYear }) {
+  if (periodicity === TEST_PERIODICITY) {
+    return (
+      <text className="chart__axis" x={x} y={HEIGHT - MARGIN.bottom + 18} textAnchor="middle">
+        {periodIndex(period)}
+      </text>
+    );
+  }
   const [year, month] = period.split('-').map(Number);
   const name = SHORT_MONTH.format(new Date(Date.UTC(year, month - 1, 1))).replace('.', '');
   return (

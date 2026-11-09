@@ -41,7 +41,7 @@ describe('Periodo histórico del pronóstico', () => {
     await ui.selectOptions(screen.getByLabelText('Hasta'), '2026-05');
     await ui.click(screen.getByRole('button', { name: 'Ejecutar pronóstico' }));
 
-    expect(screen.getByText('El mes final no puede ser anterior al inicial.')).toBeInTheDocument();
+    expect(screen.getByText('El periodo final no puede ser anterior al inicial.')).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
 
     await ui.click(screen.getByRole('button', { name: 'Usar toda la serie' }));
@@ -124,7 +124,7 @@ describe('Contenido de la exportación', () => {
     expect(lines[0]).toBe('Mes;Real (unidades);Promedio móvil simple;Suavizamiento exponencial;Entra al MAD y MAPE');
     expect(lines[1]).toBe('2026-04;100;;;No');
     expect(lines[4]).toBe('2026-07;130;120;112,5;Sí');
-    expect(lines[5]).toBe('2026-08;;130;121,25;Mes pronosticado');
+    expect(lines[5]).toBe('2026-08;;130;121,25;Pronosticado');
   });
 
   it('la ficha trae referencia, periodo, evaluación, umbral, usuario y versiones', () => {
@@ -198,6 +198,6 @@ describe('Libro de Excel', () => {
     expect(data.getRow(1).values.slice(1)).toEqual([
       'Mes', 'Real (unidades)', 'Promedio móvil simple', 'Suavizamiento exponencial', 'Entra al MAD y MAPE',
     ]);
-    expect(data.getRow(6).values.slice(1)).toEqual(['2026-08', undefined, 130, 121.25, 'Mes pronosticado']);
+    expect(data.getRow(6).values.slice(1)).toEqual(['2026-08', undefined, 130, 121.25, 'Pronosticado']);
   });
 });
