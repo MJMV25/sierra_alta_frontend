@@ -5,12 +5,11 @@ import Layout from './components/Layout';
 import ForbiddenPage from './pages/ForbiddenPage';
 import ForecastDetailPage from './pages/forecast/ForecastDetailPage';
 import ForecastPage from './pages/forecast/ForecastPage';
-import HistoryPage from './pages/history/HistoryPage';
-import HomePage from './pages/HomePage';
 import IndicatorsPage from './pages/IndicatorsPage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import UsersPage from './pages/admin/UsersPage';
+import WorkspacePage from './pages/workspace/WorkspacePage';
 
 export default function AppRoutes() {
   return (
@@ -18,9 +17,8 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
-          <Route index element={<HomePage />} />
           <Route element={<RequirePermission permission="history:read" />}>
-            <Route path="historicos" element={<HistoryPage />} />
+            <Route index element={<WorkspacePage />} />
           </Route>
           <Route element={<RequirePermission permission="forecast:read" />}>
             <Route path="pronosticos" element={<ForecastPage />} />

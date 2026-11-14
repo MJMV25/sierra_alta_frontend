@@ -34,7 +34,7 @@ export async function buildWorkbook(detail, comparison, chartPng = null) {
     `MAD (${detail.unit})`,
     'MAPE (%)',
     'Periodos evaluados',
-    'Estado',
+    'Mejor',
   ]);
   styleHeader(header);
   methodRows(detail, comparison).forEach((method) => {
@@ -45,7 +45,9 @@ export async function buildWorkbook(detail, comparison, chartPng = null) {
       method.mad ?? 'No calculable',
       method.mapePercent ?? 'No calculable',
       method.pairsUsed,
-      [method.status, method.bestByMad && 'menor MAD', method.bestByMape && 'menor MAPE'].filter(Boolean).join(' · '),
+      method.comparable
+        ? [method.bestByMad && 'menor MAD', method.bestByMape && 'menor MAPE'].filter(Boolean).join(' · ')
+        : 'No compite (ajuste dentro de la muestra)',
     ]);
     [3, 4, 5].forEach((cell) => {
       row.getCell(cell).numFmt = NUMBER;

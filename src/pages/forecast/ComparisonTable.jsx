@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent, formatPeriod, formatParameters, METHOD_LABELS, periodWord, STATUS_LABELS } from '../../format';
+import { formatNumber, formatPercent, formatPeriod, formatParameters, METHOD_LABELS, periodWord } from '../../format';
 
 /** Orden de las filas: el de los métodos, o de menor a mayor MAD o MAPE (los no calculables al final). */
 export const SORT_OPTIONS = { method: 'Orden de los métodos', mad: 'Menor MAD primero', mape: 'Menor MAPE primero' };
@@ -11,14 +11,13 @@ export function sortRows(rows, sortBy) {
 }
 
 /**
- * Tabla comparativa de una ejecución (GET /indicators/executions/{id}). Ni el MAD ni el MAPE mandan: se
- * marca el menor de cada uno por separado (ADR 07). Con `detail` (la ejecución completa) agrega los
+ * Tabla comparativa de una ejecución (guardada o recalculada en vivo). Se marca el menor MAD y el menor MAPE
+ * por separado; el estacional multiplicativo aparece pero no compite (ADR 13 del backend). Con `detail` (la ejecución completa) agrega los
  * parámetros y el pronóstico del mes siguiente de cada método. `sortBy` ordena las filas (SORT_OPTIONS).
  */
 export default function ComparisonTable({ comparison, detail = null, unit = '', sortBy = 'method', periodicity: given }) {
   const methodOf = (code) => detail?.methods.find((m) => m.method === code);
   const nextPeriod = detail?.methods[0]?.nextForecast?.period;
-  const threshold = comparison.mapeThresholdPercent;
   // Del detalle o, en la pantalla Indicadores, de la fila de la ejecución (casos de prueba: "t = n").
   const periodicity = detail?.periodicity ?? given;
 
@@ -27,10 +26,7 @@ export default function ComparisonTable({ comparison, detail = null, unit = '', 
       <p className="panel__text">
         {comparison.evaluationFrom
           ? `Evaluado de ${formatPeriod(comparison.evaluationFrom, periodicity)} a ${formatPeriod(comparison.evaluationTo, periodicity)}, los mismos ${periodWord(2, periodicity)} para todos los métodos.`
-          : 'Ningún mes tuvo pronóstico de todos los métodos: MAD y MAPE no son calculables.'}{' '}
-        {threshold === null
-          ? 'Esta ejecución es anterior al umbral de aceptación: sin criterio definido.'
-          : `Un método cumple si su MAPE es menor que ${formatPercent(threshold)}.`}
+          : 'Ningún mes tuvo pronóstico de todos los métodos: MAD y MAPE no son calculables.'}
       </p>
       <div className="table-wrap">
         <table className="table table--sticky table--cards">
@@ -50,17 +46,16 @@ export default function ComparisonTable({ comparison, detail = null, unit = '', 
               <th scope="col" className="table__number">
                 MAPE
               </th>
-              <th scope="col">Estado</th>
             </tr>
           </thead>
           <tbody>
             {sortRows(comparison.methods, sortBy).map((row) => {
-              const status = STATUS_LABELS[row.status] ?? { label: row.status, tone: 'off', icon: '' };
               const method = methodOf(row.method);
               return (
                 <tr key={row.method}>
                   <th scope="row" className="table__strong">
                     {METHOD_LABELS[row.method] ?? row.method}
+                    {row.comparable === false && <span className="tag tag--muted">No compite</span>}
                   </th>
                   {detail && (
                     <td className="table__muted" data-label="Parámetros">
@@ -82,11 +77,6 @@ export default function ComparisonTable({ comparison, detail = null, unit = '', 
                     <span>
                       {formatPercent(row.mapePercent)}
                       {row.bestByMape && <span className="tag tag--best">Menor MAPE</span>}
-                    </span>
-                  </td>
-                  <td data-label="Estado">
-                    <span className={`badge badge--${status.tone}`}>
-                      <span aria-hidden="true">{status.icon}</span> {status.label}
                     </span>
                   </td>
                 </tr>

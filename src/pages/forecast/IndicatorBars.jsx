@@ -3,10 +3,10 @@ import { formatNumber, formatPercent, METHOD_LABELS } from '../../format';
 
 /**
  * MAD y MAPE en dos gráficos de barras separados (unidades y porcentaje no comparten eje). Cada barra lleva
- * el color elegido para su método y el valor escrito en tinta al final; el MAPE marca el umbral de aceptación.
+ * el color elegido para su método y el valor escrito en tinta al final.
  * `rows` ya viene en el orden elegido en la tabla.
  */
-export default function IndicatorBars({ rows, colors, unit, threshold }) {
+export default function IndicatorBars({ rows, colors, unit }) {
   return (
     <div className="indicator-charts">
       <Bars
@@ -24,15 +24,14 @@ export default function IndicatorBars({ rows, colors, unit, threshold }) {
         valueOf={(row) => row.mapePercent}
         format={formatPercent}
         bestKey="bestByMape"
-        threshold={threshold}
       />
     </div>
   );
 }
 
-function Bars({ title, rows, colors, valueOf, format, bestKey, threshold = null }) {
+function Bars({ title, rows, colors, valueOf, format, bestKey }) {
   const values = rows.map(valueOf).filter((v) => v !== null && v !== undefined).map(Number);
-  const max = Math.max(...values, threshold ?? 0, Number.MIN_VALUE);
+  const max = Math.max(...values, Number.MIN_VALUE);
   const titleId = useId();
   const percent = (value) => `${Math.max(0, (Number(value) / max) * 100)}%`;
   return (
@@ -63,21 +62,11 @@ function Bars({ title, rows, colors, valueOf, format, bestKey, threshold = null 
                     </span>
                   </>
                 )}
-                {threshold !== null && (
-                  <span className="bars__scale" aria-hidden="true">
-                    <span className="bars__threshold" style={{ left: percent(threshold) }} />
-                  </span>
-                )}
               </span>
             </li>
           );
         })}
       </ul>
-      {threshold !== null && (
-        <p className="bars__note">
-          <span className="bars__threshold-key" aria-hidden="true" /> Umbral: cumple con MAPE menor que {formatPercent(threshold)}
-        </p>
-      )}
     </figure>
   );
 }

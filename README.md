@@ -6,8 +6,9 @@
 Sierra Alta S.A.S. BIC · marca Eleven Pro. SPA en React + Vite que consume la API REST del backend
 Spring Boot (`sierra_alta_backend`).
 
-Estado actual: inicio de sesión, navegación por permisos, administración de usuarios, históricos (consulta y
-carga), ejecución de pronósticos con sus resultados y comparación de métodos con el umbral de aceptación.
+Estado actual: inicio de sesión, navegación por permisos, administración de usuarios y, como pantalla de
+inicio, la hoja de datos de la empresa con el pronóstico en vivo (tema oscuro, según el mockup de Industrial):
+se corrigen o agregan meses y se cambian los parámetros, y todo se recalcula en la misma pantalla.
 
 ## Requisitos
 
@@ -51,9 +52,9 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
 
 | Usuario      | Rol                         | Ve en el menú |
 |--------------|-----------------------------|---------------|
-| `admin`      | Administrador del sistema   | Todo: Históricos (con "Cargar históricos"), Pronósticos (con "Ejecutar pronóstico"; es el único que ejecuta), Indicadores y Usuarios |
-| `planeador`  | Planeador de producción     | Históricos, Pronósticos e Indicadores (consulta y exporta: Excel, PDF, CSV, PNG/SVG) |
-| `analista`   | Analista de datos           | Históricos (con "Cargar históricos"), Pronósticos e Indicadores (consulta) |
+| `admin`      | Administrador del sistema   | Todo: edita la hoja (y la importa de Excel), guarda pronósticos, exporta y administra usuarios |
+| `planeador`  | Planeador de producción     | Hoja de datos (consulta y recalcula), Pronósticos guardados e Indicadores; exporta (Excel, PDF, CSV, PNG/SVG) |
+| `analista`   | Analista de datos           | Hoja de datos (consulta y recalcula), guarda pronósticos, Pronósticos guardados e Indicadores |
 
 ## Seguridad en el cliente
 
@@ -75,18 +76,28 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
 
 ## Pantallas de pronóstico
 
-- **Históricos** (`/historicos`): referencias con meses cargados y versión de datos; gráfico y tabla de la
-  producción mensual. Con `history:write`, carga de meses nuevos pegando "AAAA-MM;cantidad" por línea (o dos
-  columnas de Excel), con confirmación porque lo cargado no se borra. Los errores del backend
-  (`observations[2].value`) se muestran con el número de línea del texto.
-- **Pronósticos** (`/pronosticos`): con `forecast:execute`, formulario para elegir la referencia y de 1 a 4
-  métodos con sus parámetros y el periodo histórico (desde/hasta; por defecto toda la serie); cada envío lleva una `Idempotency-Key` nueva. Los errores `methods[i].campo`
-  aparecen junto al parámetro de ese método. Debajo, las ejecuciones recientes.
+- **Hoja de datos** (`/`, pantalla de inicio; ADR 13 del backend):
+  - Pestaña "Datos de Sierra Alta": la hoja como la hoja DATOS del Excel (un bloque por año, referencias en
+    filas, meses en columnas y total). Con `history:write` (solo administrador) las celdas se editan como en
+    Excel: flechas o Enter para moverse, Escape deshace la celda y se puede pegar un rango copiado del Excel.
+    Los cambios quedan resaltados (nuevo, corregido, borrado o con error) hasta "Guardar cambios" o
+    "Descartar cambios"; borrar meses pide confirmación. "Exportar Excel" descarga la hoja con el formato de
+    DATOS e "Importar Excel" la lee de vuelta (de la aplicación o del Excel de Industrial) y deja los cambios
+    resaltados para revisarlos antes de guardar. Debajo, el historial de cambios de la referencia.
+  - Pestaña "Datos de ejemplo": Spokane y ACME con los parámetros del Excel ya puestos; se pueden cambiar
+    valores para probar (nada se guarda) y "Volver a los datos del Excel".
+  - Pronóstico de la referencia elegida, recalculado en vivo (`POST /forecasts/preview`, 350 ms después de
+    la última tecla) con los datos sin guardar: celdas de parámetros como en el Excel (n, K0…Kn con su suma, α,
+    β, L y el periodo histórico; si los K no suman 1 no se calcula), tarjetas del mejor método por MAD y por
+    MAPE (una sola si coinciden; el estacional no compite), pronóstico del periodo siguiente y último dato,
+    gráfico personalizable, comparación completa y tabla de resultados y trazabilidad (D(t), P(t), E(t), |E(t)|
+    y |E(t)|/D(t)). Con `forecast:execute` (administrador y analista), "Guardar pronóstico" deja la ejecución
+    con su trazabilidad.
+- **Pronósticos guardados** (`/pronosticos`): las ejecuciones recientes.
 - **Resultado** (`/pronosticos/:id`), el dashboard de la ejecución:
   - Ficha: periodo histórico usado, fecha, quién ejecutó, versión de datos y de cálculo.
-  - Comparación: tabla (parámetros, pronóstico siguiente, MAD, MAPE, menor de cada uno y estado frente al
-    umbral) que se ordena por método, menor MAD o menor MAPE; debajo, barras de MAD y de MAPE en gráficos
-    separados (no comparten eje), con el umbral marcado en el MAPE.
+  - Comparación: tabla (parámetros, pronóstico siguiente, MAD, MAPE y el menor de cada uno) que se ordena por
+    método, menor MAD o menor MAPE; debajo, barras de MAD y de MAPE en gráficos separados (no comparten eje).
   - Gráfico personalizable: mostrar u ocultar series, tipo líneas, columnas o combinado (real en columnas y
     métodos en línea), valores sobre los puntos, eje Y desde 0 o ajustado (las columnas siempre desde 0),
     rango de meses visible y "Restablecer vista".
@@ -101,7 +112,7 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
   superponerse, con el año en enero.
 - Responsive: en pantallas de hasta 640 px las tablas de comparación, ejecuciones y referencias se muestran
   como tarjetas; la tabla de datos mes a mes conserva el encabezado y la columna del mes fijos al desplazarse.
-- El frontend no recalcula nada: MAD, MAPE, mejores y estado vienen del backend. Cada método tiene un color
+- El frontend no recalcula nada: pronósticos, errores, MAD, MAPE y mejores vienen del backend. Cada método tiene un color
   fijo (paleta categórica validada para daltonismo) y la tabla de datos acompaña siempre al gráfico.
 
 ## Estructura
@@ -110,14 +121,14 @@ salen del `.env` del backend (`BOOTSTRAP_ADMIN_PASSWORD` para `admin`, `DEMO_USE
 src/
   api/          http.js (Axios: credenciales, CSRF, interceptores 401/403), auth.js, admin.js, modules.js
   auth/         AuthProvider, RequireAuth, RequirePermission
-  export/       chartImage (gráfico a SVG/PNG), report (contenido común y CSV), excel (ExcelJS)
+  export/       chartImage (gráfico a SVG/PNG), report (contenido común y CSV), excel (ExcelJS), sheetExcel (hoja DATOS de ida y vuelta)
   components/   Layout, Topbar, Sidebar, FormField, ConfirmDialog, ProblemAlert, Notice, QueryState, LineChart, ...
-  pages/        LoginPage, HomePage, IndicatorsPage, ForbiddenPage, NotFoundPage, useModuleQuery, seriesOptions
-  pages/history/  HistoryPage, UploadForm, parseObservations
-  pages/forecast/ ForecastPage, ForecastForm, ForecastDetailPage, ComparisonTable, IndicatorBars, ExecutionsTable
+  pages/        LoginPage, IndicatorsPage, ForbiddenPage, NotFoundPage, useModuleQuery, seriesOptions
+  pages/workspace/ WorkspacePage (inicio), DataSheet, sheetModel, ParameterBar, KpiCards, ResultsTable, ChangeHistory, useLivePreview
+  pages/forecast/ ForecastPage, ForecastDetailPage, ForecastChart, MethodComparison, ComparisonTable, IndicatorBars, ExecutionsTable, methodConfig
   pages/admin/  UsersPage, UsersTable, CreateUserForm, SecurityEventsTable
   navigation.js secciones del menú y su permiso
-  format.js     números, porcentajes y meses en es-CO; nombres de métodos y estados
+  format.js     números, porcentajes y meses en es-CO; nombres de métodos
   routes.jsx, main.jsx, styles.css
   test/         pruebas y utilidades (simulan la API sustituyendo el adaptador de Axios)
 ```

@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
+
+// Con cobertura, el primer render de una prueba puede tardar más que el segundo que findBy/waitFor esperan por defecto.
+configure({ asyncUtilTimeout: 4000 });
 
 afterEach(() => {
   cleanup();

@@ -9,7 +9,7 @@ import AppRoutes from '../routes';
 export const PERMISSIONS = {
   ADMIN: ['users:manage', 'history:read', 'history:write', 'forecast:execute', 'forecast:read', 'indicators:read', 'forecast:export'],
   PLANNER: ['history:read', 'forecast:read', 'indicators:read', 'forecast:export'],
-  ANALYST: ['history:read', 'history:write', 'forecast:read', 'indicators:read'],
+  ANALYST: ['history:read', 'forecast:read', 'forecast:execute', 'indicators:read'],
 };
 
 const ROLE_NAMES = {

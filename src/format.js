@@ -23,12 +23,11 @@ export const METHOD_SHORT_LABELS = {
 /** Orden fijo de los métodos: también fija su color inicial en el gráfico. */
 export const METHOD_ORDER = Object.keys(METHOD_LABELS);
 
-export const STATUS_LABELS = {
-  CUMPLE: { label: 'Cumple', tone: 'ok', icon: '✓' },
-  NO_CUMPLE: { label: 'No cumple', tone: 'danger', icon: '✕' },
-  SIN_EVALUAR: { label: 'Sin evaluar', tone: 'off', icon: '–' },
-  SIN_CRITERIO: { label: 'Sin criterio definido', tone: 'off', icon: '–' },
-};
+/** Meses como en la hoja DATOS del Excel; también los usa la importación para reconocer las columnas. */
+export const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
 
 /** La empresa registra producción y la trata como demanda; la interfaz dice "producción" (ADR 07). */
 export const MEASURE_LABELS = { PRODUCCION: 'Producción', DEMANDA: 'Demanda' };
@@ -41,6 +40,15 @@ const dateTimeFormat = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', t
 
 export function formatNumber(value) {
   return value === null || value === undefined ? '—' : numberFormat.format(Number(value));
+}
+
+/** Error con signo: "+12,5" o "−3"; el signo menos tipográfico se lee mejor en tablas. */
+export function formatSigned(value) {
+  if (value === null || value === undefined) return '—';
+  const number = Number(value);
+  const text = numberFormat.format(Math.abs(number));
+  if (number > 0) return `+${text}`;
+  return number < 0 ? `−${text}` : text;
 }
 
 /** `mapePercent` ya viene en porcentaje desde el backend. */

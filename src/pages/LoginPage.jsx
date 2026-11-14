@@ -45,14 +45,21 @@ export default function LoginPage() {
 
   return (
     <div className="login">
+      <div className="login__hero" aria-hidden="true">
+        <img src={logo} alt="" className="login__logo" />
+        <p className="login__eyebrow">Sierra Alta S.A.S. BIC</p>
+        <p className="login__headline">Plataforma de pronóstico de demanda</p>
+        <p className="login__lead">Datos de producción, seis métodos de pronóstico y sus indicadores, recalculados en vivo.</p>
+        <svg className="login__spark" viewBox="0 0 320 90">
+          <polyline className="login__spark-real" points="0,70 40,52 80,60 120,34 160,46 200,22 240,38 280,14 320,26" />
+          <polyline className="login__spark-forecast" points="0,74 40,62 80,58 120,48 160,44 200,34 240,32 280,24 320,20" />
+        </svg>
+      </div>
       <section className="login__card" aria-labelledby="login-title">
-        <div className="login__brand">
-          <img src={logo} alt="Eleven Pro" className="login__logo" />
-        </div>
         <h1 className="login__title" id="login-title">
-          Pronóstico de producción
+          Iniciar sesión
         </h1>
-        <p className="login__subtitle">Sierra Alta S.A.S. BIC</p>
+        <p className="login__subtitle">Sierra Alta · Pronóstico de demanda</p>
 
         {sessionMessage && !problem && <Notice tone="warning">{sessionMessage}</Notice>}
         <ProblemAlert problem={problem} />

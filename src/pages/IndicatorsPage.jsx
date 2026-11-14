@@ -18,7 +18,7 @@ export default function IndicatorsPage() {
       <header className="page__header">
         <h1 className="page__title">Indicadores</h1>
         <p className="page__subtitle">
-          MAD y MAPE de cada método, el mejor por cada indicador y su estado frente al umbral de aceptación.
+          MAD y MAPE de cada método y el mejor por cada indicador, en los pronósticos guardados.
         </p>
       </header>
       {selectedId && (

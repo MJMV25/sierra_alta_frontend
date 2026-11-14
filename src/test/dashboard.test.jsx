@@ -7,48 +7,6 @@ import { sortRows } from '../pages/forecast/ComparisonTable';
 import { COMPARISON, DETAIL, fixtures } from './fixtures';
 import { mockBackend, renderApp, session } from './utils';
 
-describe('Periodo histórico del pronóstico', () => {
-  it('envía el periodo elegido e indica qué mes se pronostica', async () => {
-    const ui = userEvent.setup();
-    const requests = mockBackend({
-      me: session('ADMIN'),
-      handler: (req) =>
-        req.method === 'POST' && req.url === '/api/v1/forecasts' ? { status: 201, data: DETAIL } : fixtures(req),
-    });
-    renderApp('/pronosticos');
-
-    // Por defecto, toda la serie.
-    expect(await screen.findByLabelText('Desde')).toHaveValue('2026-04');
-    expect(screen.getByLabelText('Hasta')).toHaveValue('2026-07');
-    expect(screen.getByText(/Se usan 4 meses y se pronostica ago de 2026/)).toBeInTheDocument();
-
-    await ui.selectOptions(screen.getByLabelText('Desde'), '2026-05');
-    await ui.selectOptions(screen.getByLabelText('Hasta'), '2026-06');
-    expect(screen.getByText(/Se usan 2 meses y se pronostica jul de 2026/)).toBeInTheDocument();
-    await ui.click(screen.getByRole('button', { name: 'Ejecutar pronóstico' }));
-
-    await screen.findByRole('heading', { name: /Pronóstico n.º 7/ });
-    const post = requests.find((r) => r.method === 'POST');
-    expect(post.data).toMatchObject({ seriesId: 1, from: '2026-05', to: '2026-06' });
-  });
-
-  it('no envía un periodo con el mes final antes del inicial', async () => {
-    const ui = userEvent.setup();
-    const requests = mockBackend({ me: session('ADMIN'), handler: fixtures });
-    renderApp('/pronosticos');
-
-    await ui.selectOptions(await screen.findByLabelText('Desde'), '2026-07');
-    await ui.selectOptions(screen.getByLabelText('Hasta'), '2026-05');
-    await ui.click(screen.getByRole('button', { name: 'Ejecutar pronóstico' }));
-
-    expect(screen.getByText('El periodo final no puede ser anterior al inicial.')).toBeInTheDocument();
-    expect(requests.some((r) => r.method === 'POST')).toBe(false);
-
-    await ui.click(screen.getByRole('button', { name: 'Usar toda la serie' }));
-    expect(screen.getByLabelText('Desde')).toHaveValue('2026-04');
-  });
-});
-
 describe('Dashboard de un pronóstico', () => {
   it('muestra quién ejecutó y el periodo usado', async () => {
     mockBackend({ me: session('PLANNER'), handler: fixtures });
@@ -58,7 +16,7 @@ describe('Dashboard de un pronóstico', () => {
     );
   });
 
-  it('ordena la comparación por MAPE y grafica MAD y MAPE por separado con el umbral', async () => {
+  it('ordena la comparación por MAPE y grafica MAD y MAPE por separado, sin umbral', async () => {
     const ui = userEvent.setup();
     mockBackend({ me: session('PLANNER'), handler: fixtures });
     renderApp('/pronosticos/7');
@@ -74,7 +32,7 @@ describe('Dashboard de un pronóstico', () => {
     expect(within(mad).getByText(/10 ★/)).toBeInTheDocument();
     const mape = screen.getByRole('figure', { name: /^MAPE/ });
     expect(within(mape).getByText('11,68 %')).toBeInTheDocument();
-    expect(within(mape).getByText(/Umbral: cumple con MAPE menor que 10 %/)).toBeInTheDocument();
+    expect(within(mape).queryByText(/Umbral/)).not.toBeInTheDocument();
   });
 
   it('oculta series, cambia el tipo de gráfico y restablece la vista', async () => {
@@ -185,12 +143,12 @@ describe('Contenido de la exportación', () => {
     expect(lines[5]).toBe('2026-08;;130;121,25;Pronosticado');
   });
 
-  it('la ficha trae referencia, periodo, evaluación, umbral, usuario y versiones', () => {
+  it('la ficha trae referencia, periodo, evaluación, usuario y versiones', () => {
     const rows = Object.fromEntries(summaryRows(DETAIL, COMPARISON));
     expect(rows.Referencia).toBe('JERSEY-PRO · Jersey Pro');
     expect(rows['Periodo histórico']).toBe('abr de 2026 a jul de 2026 (4 meses)');
     expect(rows['Rango de evaluación']).toBe('may de 2026 a jul de 2026');
-    expect(rows['Umbral de aceptación']).toBe('MAPE menor que 10 %');
+    expect(rows['Umbral de aceptación']).toBeUndefined();
     expect(rows['Ejecutado por']).toBe('admin');
     expect(rows['Versión de datos']).toBe('3');
     expect(warnings(DETAIL, COMPARISON)).toEqual([
@@ -249,7 +207,7 @@ describe('Libro de Excel', () => {
     summary.eachRow((row) => texts.push(row.values.filter(Boolean).join(' | ')));
     expect(texts).toContain('Ejecutado por | admin');
     expect(texts).toContain('Rango de evaluación | may de 2026 a jul de 2026');
-    expect(texts.find((t) => t.startsWith('Promedio móvil simple'))).toContain('Cumple · menor MAD · menor MAPE');
+    expect(texts.find((t) => t.startsWith('Promedio móvil simple'))).toContain('menor MAD · menor MAPE');
     expect(texts).toContain('Suavizamiento exponencial: 1 mes con producción 0 fuera del MAPE (sí en el MAD).');
 
     const data = workbook.getWorksheet('Datos');

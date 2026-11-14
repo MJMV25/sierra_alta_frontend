@@ -1,9 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getExecutionIndicators, getForecast } from '../../api/modules';
 import { useAuth } from '../../auth/AuthProvider';
-import LineChart from '../../components/LineChart';
-import Notice from '../../components/Notice';
 import ProblemAlert from '../../components/ProblemAlert';
 import QueryState from '../../components/QueryState';
 import { chartToSvg, svgToPng } from '../../export/chartImage';
@@ -20,11 +18,9 @@ import {
   METHOD_SHORT_LABELS,
 } from '../../format';
 import useModuleQuery from '../useModuleQuery';
-import ComparisonTable, { SORT_OPTIONS, sortRows } from './ComparisonTable';
-import IndicatorBars from './IndicatorBars';
-import useSeriesColors, { hexOf } from './useSeriesColors';
-
-const CHART_TYPES = { line: 'Líneas', column: 'Columnas', combo: 'Combinado' };
+import ForecastChart from './ForecastChart';
+import MethodComparison from './MethodComparison';
+import useSeriesColors from './useSeriesColors';
 
 export default function ForecastDetailPage() {
   const { id } = useParams();
@@ -34,7 +30,7 @@ export default function ForecastDetailPage() {
   return (
     <div className="page">
       <p className="page__back no-print">
-        <Link to="/pronosticos">← Pronósticos</Link>
+        <Link to="/pronosticos">← Pronósticos guardados</Link>
       </p>
       <QueryState query={execution}>{(detail) => <Detail detail={detail} />}</QueryState>
     </div>
@@ -125,7 +121,7 @@ function Detail({ detail }) {
         </h2>
         {canReadIndicators ? (
           <QueryState query={comparison}>
-            {(data) => <Comparison comparison={data} detail={detail} colors={seriesColors.colors} />}
+            {(data) => <MethodComparison comparison={data} detail={detail} colors={seriesColors.colors} />}
           </QueryState>
         ) : (
           <p>Su rol no consulta indicadores.</p>
@@ -147,191 +143,6 @@ function Detail({ detail }) {
         {printImage && <img className="print-only print-chart" src={printImage} alt={`${measure} real y pronosticada`} />}
         <DataTable detail={detail} measure={measure} canExport={canExport} colors={seriesColors.colors} />
       </section>
-    </>
-  );
-}
-
-function Comparison({ comparison, detail, colors }) {
-  const [sortBy, setSortBy] = useState('method');
-  return (
-    <>
-      <div className="panel__controls no-print">
-        <label className="inline-field">
-          <span>Ordenar</span>
-          <select className="field__control field__control--compact" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-            {Object.entries(SORT_OPTIONS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <ComparisonTable comparison={comparison} detail={detail} unit={detail.unit} sortBy={sortBy} />
-      {detail.methods.length > 1 && detail.methods.some((m) => m.method === 'SEASONAL_MULTIPLICATIVE') && (
-        <Notice tone="warning">
-          El estacional multiplicativo ajusta cada ciclo con su propio promedio, como el Excel: su MAD y su MAPE no son
-          comparables con los de los otros métodos, que pronostican cada periodo solo con datos anteriores.
-        </Notice>
-      )}
-      <IndicatorBars
-        rows={sortRows(comparison.methods, sortBy)}
-        colors={colors}
-        unit={detail.unit}
-        threshold={comparison.mapeThresholdPercent}
-      />
-    </>
-  );
-}
-
-function initialView(periods) {
-  return { hidden: [], type: 'line', showValues: false, zeroBased: true, from: periods[0], to: periods[periods.length - 1] };
-}
-
-/** Gráfico con sus opciones de vista: series visibles y su color, tipo, valores, escala y rango de meses. */
-function ForecastChart({ detail, measure, chartRef, canExport, onExport, seriesColors }) {
-  const table = useMemo(() => forecastTable(detail), [detail]);
-  const [view, setView] = useState(() => initialView(table.periods));
-  const change = (changes) => setView((current) => ({ ...current, ...changes }));
-  const { colors, setColor, resetColors, isCustom } = seriesColors;
-
-  const allSeries = [
-    { key: 'real', label: `${measure} real`, color: colors.real, values: table.actuals },
-    ...table.methods.map((column) => ({
-      key: column.method,
-      label: METHOD_LABELS[column.method] ?? column.method,
-      color: colors[column.method],
-      dashed: view.type === 'line' || view.type === 'combo',
-      values: column.values,
-    })),
-  ];
-  const start = Math.max(0, table.periods.indexOf(view.from));
-  const end = Math.max(start, table.periods.indexOf(view.to));
-  const periods = table.periods.slice(start, end + 1);
-  const series = allSeries
-    .filter((s) => !view.hidden.includes(s.key))
-    .map((s) => ({ ...s, values: s.values.slice(start, end + 1) }));
-  const toggle = (key) =>
-    change({ hidden: view.hidden.includes(key) ? view.hidden.filter((k) => k !== key) : [...view.hidden, key] });
-  const fixedZero = view.type !== 'line';
-  const isInitial = !isCustom && JSON.stringify(view) === JSON.stringify(initialView(table.periods));
-  const reset = () => {
-    setView(initialView(table.periods));
-    resetColors();
-  };
-  const name = fileBaseName(detail);
-  const image = () => chartToSvg(chartRef.current, { title: `${measure} real y pronosticada · ${detail.productName}` });
-
-  return (
-    <>
-      <div className="chart-controls no-print">
-        <fieldset className="chart-controls__group">
-          <legend>Series y colores</legend>
-          <div className="chips">
-            {allSeries.map((s) => (
-              <span key={s.key} className="chip-group">
-                <label className="chip">
-                  <input type="checkbox" checked={!view.hidden.includes(s.key)} onChange={() => toggle(s.key)} />
-                  <span className="chip__swatch" style={{ background: s.color }} aria-hidden="true" />
-                  {s.key === 'real' ? 'Real' : (METHOD_SHORT_LABELS[s.key] ?? s.label)}
-                </label>
-                <input
-                  type="color"
-                  className="color-pick"
-                  value={hexOf(s.color)}
-                  aria-label={`Color de ${s.label}`}
-                  title={`Color de ${s.label}`}
-                  onChange={(event) => setColor(s.key, event.target.value)}
-                />
-              </span>
-            ))}
-          </div>
-        </fieldset>
-        <div className="chart-controls__row">
-          <fieldset className="chart-controls__group">
-            <legend>Tipo</legend>
-            <div className="segmented">
-              {Object.entries(CHART_TYPES).map(([value, label]) => (
-                <label key={value} className={view.type === value ? 'segmented__option segmented__option--on' : 'segmented__option'}>
-                  <input type="radio" name={`chart-type-${detail.id}`} value={value} checked={view.type === value} onChange={() => change({ type: value })} />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <label className="inline-field">
-            <span>Desde</span>
-            <select className="field__control field__control--compact" value={view.from} onChange={(event) => change({ from: event.target.value })}>
-              {table.periods.map((period, i) => (
-                <option key={period} value={period} disabled={i > end}>
-                  {formatPeriod(period, detail.periodicity)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="inline-field">
-            <span>Hasta</span>
-            <select className="field__control field__control--compact" value={view.to} onChange={(event) => change({ to: event.target.value })}>
-              {table.periods.map((period, i) => (
-                <option key={period} value={period} disabled={i < start}>
-                  {formatPeriod(period, detail.periodicity)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className="chart-controls__row">
-          <label className="check">
-            <input type="checkbox" checked={view.showValues} onChange={(event) => change({ showValues: event.target.checked })} />
-            Mostrar valores
-          </label>
-          <label className="check" title={fixedZero ? 'Las columnas siempre arrancan en 0.' : undefined}>
-            <input
-              type="checkbox"
-              checked={fixedZero || view.zeroBased}
-              disabled={fixedZero}
-              onChange={(event) => change({ zeroBased: event.target.checked })}
-            />
-            Eje Y desde 0{fixedZero && ' (fijo con columnas)'}
-          </label>
-          <button type="button" className="btn btn--small btn--ghost" onClick={reset} disabled={isInitial}>
-            Restablecer vista
-          </button>
-          {canExport && (
-            <span className="chart-controls__downloads">
-              <button
-                type="button"
-                className="btn btn--small btn--ghost"
-                onClick={() => onExport('png', async () => download(await svgToPng(image()), `${name}-grafico.png`))}
-              >
-                Descargar PNG
-              </button>
-              <button
-                type="button"
-                className="btn btn--small btn--ghost"
-                onClick={() => onExport('svg', async () => download(new Blob([image().svg], { type: 'image/svg+xml' }), `${name}-grafico.svg`))}
-              >
-                Descargar SVG
-              </button>
-            </span>
-          )}
-        </div>
-      </div>
-      {series.length === 0 ? (
-        <p className="chart__empty">Elija al menos una serie para ver el gráfico.</p>
-      ) : (
-        <LineChart
-          ref={chartRef}
-          title={`${measure}${detail.periodicity === TEST_PERIODICITY ? ' por periodo' : ' mensual'} (${detail.unit})`}
-          periodicity={detail.periodicity}
-          periods={periods}
-          series={series}
-          type={view.type}
-          columnKeys={['real']}
-          showValues={view.showValues}
-          zeroBased={view.zeroBased}
-        />
-      )}
     </>
   );
 }
