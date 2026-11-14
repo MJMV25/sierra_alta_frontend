@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import LineChart from '../../components/LineChart';
 import Notice from '../../components/Notice';
 import QueryState from '../../components/QueryState';
-import { formatNumber, formatPeriod, MEASURE_LABELS } from '../../format';
+import { formatNumber, formatPeriod, MEASURE_LABELS, periodHeader, periodWord, TEST_PERIODICITY } from '../../format';
 import { seriesOptions } from '../seriesOptions';
 import useModuleQuery from '../useModuleQuery';
 import UploadForm from './UploadForm';
@@ -34,7 +34,10 @@ export default function HistoryPage() {
     <div className="page">
       <header className="page__header">
         <h1 className="page__title">Históricos</h1>
-        <p className="page__subtitle">Producción mensual cargada por referencia.</p>
+        <p className="page__subtitle">
+          Casos de prueba del Excel (Spokane y ACME) para verificar los cálculos; los periodos se numeran t = 1, 2, 3…
+          como en el Excel.
+        </p>
       </header>
       {notice && (
         <Notice tone="success" onDismiss={() => setNotice(null)}>
@@ -44,6 +47,8 @@ export default function HistoryPage() {
       <QueryState query={products}>
         {(data) => {
           const options = seriesOptions(data);
+          // Los casos de prueba del Excel son de solo lectura: el backend rechaza cargas en ellos.
+          const loadable = options.filter((option) => option.periodicity !== TEST_PERIODICITY);
           return (
             <>
               <section className="panel" aria-labelledby="series-title">
@@ -63,8 +68,8 @@ export default function HistoryPage() {
                   onClose={() => setSelectedId(null)}
                 />
               )}
-              {hasPermission('history:write') && options.length > 0 && (
-                <UploadForm options={options} onLoaded={handleLoaded} />
+              {hasPermission('history:write') && loadable.length > 0 && (
+                <UploadForm options={loadable} onLoaded={handleLoaded} />
               )}
             </>
           );
@@ -83,7 +88,7 @@ function SeriesTable({ options, selectedId, onSelect }) {
           <tr>
             <th scope="col">Referencia</th>
             <th scope="col">Medida</th>
-            <th scope="col">Meses cargados</th>
+            <th scope="col">Periodos cargados</th>
             <th scope="col">Desde</th>
             <th scope="col">Hasta</th>
             <th scope="col">Versión de datos</th>
@@ -102,11 +107,11 @@ function SeriesTable({ options, selectedId, onSelect }) {
               <td data-label="Medida">
                 {MEASURE_LABELS[option.measure] ?? option.measure} ({option.unit})
               </td>
-              <td className="table__number" data-label="Meses cargados">
+              <td className="table__number" data-label="Periodos cargados">
                 {option.observations}
               </td>
-              <td data-label="Desde">{formatPeriod(option.firstPeriod)}</td>
-              <td data-label="Hasta">{formatPeriod(option.lastPeriod)}</td>
+              <td data-label="Desde">{formatPeriod(option.firstPeriod, option.periodicity)}</td>
+              <td data-label="Hasta">{formatPeriod(option.lastPeriod, option.periodicity)}</td>
               <td className="table__number" data-label="Versión de datos">
                 {option.dataVersion ?? '—'}
               </td>
@@ -137,7 +142,7 @@ function SeriesDetail({ seriesId, onClose }) {
     <section className="panel" aria-labelledby="detail-title">
       <div className="panel__header">
         <h2 className="panel__title" id="detail-title">
-          {series.data ? `${series.data.productName}: producción mensual` : 'Producción mensual'}
+          {series.data ? `${series.data.productName}: datos históricos` : 'Datos históricos'}
         </h2>
         <button type="button" className="btn btn--small btn--ghost" onClick={onClose}>
           Cerrar
@@ -147,23 +152,27 @@ function SeriesDetail({ seriesId, onClose }) {
         {(data) => {
           const periods = data.observations.map((o) => o.period);
           const measure = MEASURE_LABELS[data.measure] ?? data.measure;
+          const { periodicity } = data;
           return (
             <>
               <LineChart
-                title={`${measure} mensual (${data.unit})`}
+                title={`${measure}${periodicity === TEST_PERIODICITY ? ' por periodo' : ' mensual'} (${data.unit})`}
                 periods={periods}
+                periodicity={periodicity}
                 series={[
                   { key: 'real', label: measure, color: 'var(--chart-actual)', values: data.observations.map((o) => Number(o.value)) },
                 ]}
               />
               <details className="details">
-                <summary>Ver tabla de datos ({data.observations.length} meses)</summary>
+                <summary>
+                  Ver tabla de datos ({data.observations.length} {periodWord(data.observations.length, periodicity)})
+                </summary>
                 <div className="table-wrap table-wrap--scroll">
                   <table className="table table--compact table--sticky">
-                    <caption className="visually-hidden">Producción por mes</caption>
+                    <caption className="visually-hidden">{measure} por periodo</caption>
                     <thead>
                       <tr>
-                        <th scope="col">Mes</th>
+                        <th scope="col">{periodHeader(periodicity)}</th>
                         <th scope="col" className="table__number">
                           {measure} ({data.unit})
                         </th>
@@ -172,7 +181,7 @@ function SeriesDetail({ seriesId, onClose }) {
                     <tbody>
                       {data.observations.map((o) => (
                         <tr key={o.period}>
-                          <th scope="row">{formatPeriod(o.period)}</th>
+                          <th scope="row">{formatPeriod(o.period, periodicity)}</th>
                           <td className="table__number">{formatNumber(o.value)}</td>
                         </tr>
                       ))}

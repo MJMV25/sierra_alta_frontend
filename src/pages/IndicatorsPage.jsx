@@ -21,7 +21,12 @@ export default function IndicatorsPage() {
           MAD y MAPE de cada método, el mejor por cada indicador y su estado frente al umbral de aceptación.
         </p>
       </header>
-      {selectedId && <SelectedComparison executionId={selectedId} />}
+      {selectedId && (
+        <SelectedComparison
+          executionId={selectedId}
+          periodicity={executions.data?.find((execution) => execution.id === selectedId)?.periodicity}
+        />
+      )}
       <section className="panel" aria-labelledby="executions-title">
         <h2 className="panel__title" id="executions-title">
           Elija una ejecución
@@ -41,7 +46,7 @@ export default function IndicatorsPage() {
   );
 }
 
-function SelectedComparison({ executionId }) {
+function SelectedComparison({ executionId, periodicity }) {
   const { hasPermission } = useAuth();
   const request = useCallback(() => getExecutionIndicators(executionId), [executionId]);
   const comparison = useModuleQuery(request);
@@ -58,7 +63,7 @@ function SelectedComparison({ executionId }) {
           </Link>
         )}
       </div>
-      <QueryState query={comparison}>{(data) => <ComparisonTable comparison={data} />}</QueryState>
+      <QueryState query={comparison}>{(data) => <ComparisonTable comparison={data} periodicity={periodicity} />}</QueryState>
     </section>
   );
 }

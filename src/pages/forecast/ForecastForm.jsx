@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { executeForecast } from '../../api/modules';
 import FormField from '../../components/FormField';
 import ProblemAlert from '../../components/ProblemAlert';
-import { formatNumber, formatPeriod, METHOD_LABELS, METHOD_ORDER } from '../../format';
+import { formatNumber, formatPeriod, METHOD_LABELS, METHOD_ORDER, periodWord } from '../../format';
 
 const MAX_WEIGHTS = 12;
 
@@ -12,6 +12,9 @@ const INITIAL = {
   WEIGHTED_MOVING_AVERAGE: { enabled: true, weights: ['0,5', '0,3', '0,2'] },
   EXPONENTIAL_SMOOTHING: { enabled: true, alpha: '0,3' },
   TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: { enabled: true, alpha: '0,3', beta: '0,1' },
+  LINEAR_REGRESSION: { enabled: true },
+  // Opcional: su MAD se calcula dentro de la muestra y no es comparable con el de los demás (ADR 12 del backend).
+  SEASONAL_MULTIPLICATIVE: { enabled: false, seasonLength: '12' },
 };
 
 /** "0,3" o "0.3" → 0.3; vacío o inválido → NaN (el backend responde el error del campo). */
@@ -24,11 +27,13 @@ function toRequest(method, config) {
   if (method === 'SIMPLE_MOVING_AVERAGE') return { method, periods: parseDecimal(config.periods) };
   if (method === 'WEIGHTED_MOVING_AVERAGE') return { method, weights: config.weights.map(parseDecimal) };
   if (method === 'EXPONENTIAL_SMOOTHING') return { method, alpha: parseDecimal(config.alpha) };
+  if (method === 'LINEAR_REGRESSION') return { method };
+  if (method === 'SEASONAL_MULTIPLICATIVE') return { method, seasonLength: parseDecimal(config.seasonLength) };
   return { method, alpha: parseDecimal(config.alpha), beta: parseDecimal(config.beta) };
 }
 
 /**
- * Ejecuta de 1 a 4 métodos sobre una referencia. Los rangos (α y β entre 0 y 1, pesos que suman 1, n
+ * Ejecuta de 1 a 6 métodos sobre una referencia. Los rangos (α y β entre 0 y 1, pesos que suman 1, n
  * menor o igual a los meses cargados) los valida el backend y sus errores se muestran junto a cada campo.
  */
 export default function ForecastForm({ options }) {
@@ -43,6 +48,7 @@ export default function ForecastForm({ options }) {
 
   const selected = available.find((option) => String(option.seriesId) === seriesId);
   const months = selected ? monthsBetween(selected.firstPeriod, selected.lastPeriod) : [];
+  const periodicity = selected?.periodicity;
   const usedMonths = range.from && range.to && range.from <= range.to ? monthsBetween(range.from, range.to).length : 0;
 
   const chooseSeries = (value) => {
@@ -58,7 +64,7 @@ export default function ForecastForm({ options }) {
     const errors = {};
     if (!seriesId) errors.seriesId = 'Elija la referencia que quiere pronosticar.';
     if (chosen.length === 0) errors.methods = 'Elija al menos un método.';
-    if (seriesId && range.from > range.to) errors.to = 'El mes final no puede ser anterior al inicial.';
+    if (seriesId && range.from > range.to) errors.to = 'El periodo final no puede ser anterior al inicial.';
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -94,7 +100,7 @@ export default function ForecastForm({ options }) {
           error={fieldErrors.seriesId}
           hint={
             selected &&
-            `${selected.observations} meses cargados, de ${formatPeriod(selected.firstPeriod)} a ${formatPeriod(selected.lastPeriod)}.`
+            `${selected.observations} ${periodWord(selected.observations, periodicity)} cargados, de ${formatPeriod(selected.firstPeriod, periodicity)} a ${formatPeriod(selected.lastPeriod, periodicity)}.`
           }
           onChange={(event) => chooseSeries(event.target.value)}
         >
@@ -119,7 +125,7 @@ export default function ForecastForm({ options }) {
               >
                 {months.map((month) => (
                   <option key={month} value={month}>
-                    {formatPeriod(month)}
+                    {formatPeriod(month, periodicity)}
                   </option>
                 ))}
               </FormField>
@@ -132,15 +138,15 @@ export default function ForecastForm({ options }) {
               >
                 {months.map((month) => (
                   <option key={month} value={month}>
-                    {formatPeriod(month)}
+                    {formatPeriod(month, periodicity)}
                   </option>
                 ))}
               </FormField>
             </div>
             <p className="field__hint">
               {usedMonths > 0
-                ? `Se usan ${usedMonths} ${usedMonths === 1 ? 'mes' : 'meses'} y se pronostica ${formatPeriod(nextPeriod(range.to))}.`
-                : 'Elija un mes inicial anterior o igual al final.'}{' '}
+                ? `Se usan ${usedMonths} ${periodWord(usedMonths, periodicity)} y se pronostica ${formatPeriod(nextPeriod(range.to), periodicity)}.`
+                : 'Elija un periodo inicial anterior o igual al final.'}{' '}
               {(range.from !== selected.firstPeriod || range.to !== selected.lastPeriod) && (
                 <button type="button" className="link-button" onClick={() => setRange(fullRange(selected))}>
                   Usar toda la serie
@@ -198,12 +204,39 @@ function MethodParameters({ method, config, errorFor, onChange }) {
       <div className="method__params">
         <FormField
           id={id('periods')}
-          label="Meses a promediar (n)"
+          label="Periodos a promediar (n)"
           inputMode="numeric"
           value={config.periods}
           error={errorFor('periods')}
           onChange={(event) => onChange({ periods: event.target.value })}
         />
+      </div>
+    );
+  }
+  if (method === 'LINEAR_REGRESSION') {
+    return (
+      <p className="field__hint method__note">
+        Sin parámetros: ajusta la recta P = b·t + a con todos los datos del periodo elegido (pendiente e intercepto
+        por mínimos cuadrados, sin redondear).
+      </p>
+    );
+  }
+  if (method === 'SEASONAL_MULTIPLICATIVE') {
+    return (
+      <div className="method__params">
+        <FormField
+          id={id('seasonLength')}
+          label="Periodos por ciclo (L)"
+          inputMode="numeric"
+          value={config.seasonLength}
+          hint="12 en una serie mensual. Se necesitan al menos 2 ciclos completos."
+          error={errorFor('seasonLength')}
+          onChange={(event) => onChange({ seasonLength: event.target.value })}
+        />
+        <p className="field__hint method__note">
+          Igual que el Excel: cada ciclo se ajusta con su propio promedio y los pronósticos se redondean a entero. Por eso
+          su MAD no es comparable con el de los otros métodos, que solo usan datos anteriores.
+        </p>
       </div>
     );
   }
@@ -230,7 +263,7 @@ function MethodParameters({ method, config, errorFor, onChange }) {
           <FormField
             key={index}
             id={id(`weight-${index}`)}
-            label={index === 0 ? 'Peso K0 (mes más reciente)' : `Peso K${index}`}
+            label={index === 0 ? 'Peso K0 (dato más reciente)' : `Peso K${index}`}
             inputMode="decimal"
             value={weight}
             error={errorFor(`weights[${index}]`)}
@@ -238,7 +271,7 @@ function MethodParameters({ method, config, errorFor, onChange }) {
           />
         ))}
         <p className={errorFor('weights') ? 'field__error method__note' : 'field__hint method__note'}>
-          {errorFor('weights') ?? `Suma actual: ${formatNumber(sum)} (debe ser 1). K0 es el peso del mes más reciente, como en el Excel.`}
+          {errorFor('weights') ?? `Suma actual: ${formatNumber(sum)} (debe ser 1). K0 es el peso del dato más reciente, como en el Excel.`}
         </p>
       </div>
     );

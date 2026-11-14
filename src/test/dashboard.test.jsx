@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import LineChart from '../components/LineChart';
@@ -41,7 +41,7 @@ describe('Periodo histórico del pronóstico', () => {
     await ui.selectOptions(screen.getByLabelText('Hasta'), '2026-05');
     await ui.click(screen.getByRole('button', { name: 'Ejecutar pronóstico' }));
 
-    expect(screen.getByText('El mes final no puede ser anterior al inicial.')).toBeInTheDocument();
+    expect(screen.getByText('El periodo final no puede ser anterior al inicial.')).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
 
     await ui.click(screen.getByRole('button', { name: 'Usar toda la serie' }));
@@ -101,6 +101,64 @@ describe('Dashboard de un pronóstico', () => {
     expect(screen.getByRole('button', { name: 'Restablecer vista' })).toBeDisabled();
   });
 
+  it('cambia el color de una serie en gráfico, tabla y barras, lo recuerda y lo restablece', async () => {
+    const ui = userEvent.setup();
+    mockBackend({ me: session('PLANNER'), handler: fixtures });
+    const { container, unmount } = renderApp('/pronosticos/7');
+    await screen.findByRole('img', { name: 'Producción mensual (unidades)' });
+
+    const picker = screen.getByLabelText('Color de Promedio móvil simple');
+    fireEvent.input(picker, { target: { value: '#ff0000' } });
+
+    const red = 'rgb(255, 0, 0)';
+    expect(container.querySelector('.chart__plot [stroke="#ff0000"]')).not.toBeNull();
+    expect(container.querySelector('.table__swatch').style.background).toBe(red);
+    expect([...container.querySelectorAll('.bars__bar')].some((bar) => bar.style.background === red)).toBe(true);
+    expect(JSON.parse(localStorage.getItem('sierra-alta:colores-series'))).toEqual({ SIMPLE_MOVING_AVERAGE: '#ff0000' });
+
+    // Otra visita en el mismo navegador conserva el color elegido.
+    unmount();
+    const again = renderApp('/pronosticos/7');
+    await screen.findByRole('img', { name: 'Producción mensual (unidades)' });
+    expect(screen.getByLabelText('Color de Promedio móvil simple')).toHaveValue('#ff0000');
+
+    await ui.click(screen.getByRole('button', { name: 'Restablecer vista' }));
+    expect(again.container.querySelector('.chart__plot [stroke="#ff0000"]')).toBeNull();
+    expect(localStorage.getItem('sierra-alta:colores-series')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Restablecer vista' })).toBeDisabled();
+  });
+
+  it('muestra L del estacional y advierte que su MAD no es comparable', async () => {
+    const seasonal = {
+      ...DETAIL.methods[0],
+      method: 'SEASONAL_MULTIPLICATIVE',
+      periods: null,
+      seasonLength: 2,
+      mad: 3,
+      mapePercent: 2.5,
+    };
+    const detail = { ...DETAIL, methods: [...DETAIL.methods, seasonal] };
+    const comparison = {
+      ...COMPARISON,
+      methods: [...COMPARISON.methods, { ...COMPARISON.methods[0], method: 'SEASONAL_MULTIPLICATIVE', mad: 3 }],
+    };
+    mockBackend({
+      me: session('PLANNER'),
+      handler: (req) => {
+        if (req.url === '/api/v1/forecasts/7') return { status: 200, data: detail };
+        if (req.url === '/api/v1/indicators/executions/7') return { status: 200, data: comparison };
+        return fixtures(req);
+      },
+    });
+    renderApp('/pronosticos/7');
+
+    const table = await screen.findByRole('table', { name: 'Comparación de métodos por MAD y MAPE' });
+    const row = within(table).getByRole('rowheader', { name: 'Estacional multiplicativo' }).closest('tr');
+    expect(row).toHaveTextContent('L = 2');
+    expect(screen.getByText(/no son comparables con los de los otros métodos/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Color de Estacional multiplicativo')).toBeInTheDocument();
+  });
+
   it('el planeador puede exportar y el analista no', async () => {
     mockBackend({ me: session('PLANNER'), handler: fixtures });
     const planner = renderApp('/pronosticos/7');
@@ -124,7 +182,7 @@ describe('Contenido de la exportación', () => {
     expect(lines[0]).toBe('Mes;Real (unidades);Promedio móvil simple;Suavizamiento exponencial;Entra al MAD y MAPE');
     expect(lines[1]).toBe('2026-04;100;;;No');
     expect(lines[4]).toBe('2026-07;130;120;112,5;Sí');
-    expect(lines[5]).toBe('2026-08;;130;121,25;Mes pronosticado');
+    expect(lines[5]).toBe('2026-08;;130;121,25;Pronosticado');
   });
 
   it('la ficha trae referencia, periodo, evaluación, umbral, usuario y versiones', () => {
@@ -198,6 +256,6 @@ describe('Libro de Excel', () => {
     expect(data.getRow(1).values.slice(1)).toEqual([
       'Mes', 'Real (unidades)', 'Promedio móvil simple', 'Suavizamiento exponencial', 'Entra al MAD y MAPE',
     ]);
-    expect(data.getRow(6).values.slice(1)).toEqual(['2026-08', undefined, 130, 121.25, 'Mes pronosticado']);
+    expect(data.getRow(6).values.slice(1)).toEqual(['2026-08', undefined, 130, 121.25, 'Pronosticado']);
   });
 });

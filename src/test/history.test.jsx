@@ -47,7 +47,7 @@ describe('Históricos', () => {
     expect(screen.getByRole('button', { name: 'Ver datos de Short Run' })).toBeDisabled();
 
     await ui.click(screen.getByRole('button', { name: 'Ver datos de Jersey Pro' }));
-    expect(await screen.findByRole('heading', { name: 'Jersey Pro: producción mensual' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Jersey Pro: datos históricos' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Producción mensual (unidades)' })).toBeInTheDocument();
     expect(screen.getByText('Ver tabla de datos (4 meses)')).toBeInTheDocument();
   });

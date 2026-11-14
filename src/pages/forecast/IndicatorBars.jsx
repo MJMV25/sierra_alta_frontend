@@ -3,7 +3,7 @@ import { formatNumber, formatPercent, METHOD_LABELS } from '../../format';
 
 /**
  * MAD y MAPE en dos gráficos de barras separados (unidades y porcentaje no comparten eje). Cada barra lleva
- * el color fijo de su método y el valor escrito en tinta al final; el MAPE marca el umbral de aceptación.
+ * el color elegido para su método y el valor escrito en tinta al final; el MAPE marca el umbral de aceptación.
  * `rows` ya viene en el orden elegido en la tabla.
  */
 export default function IndicatorBars({ rows, colors, unit, threshold }) {

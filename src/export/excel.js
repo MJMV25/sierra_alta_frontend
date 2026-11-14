@@ -1,7 +1,7 @@
 // Libro de Excel de una ejecución: hoja "Resumen" (ficha, comparación, advertencias y gráfico) y hoja
 // "Datos" (real y pronóstico de cada método por mes). ExcelJS se carga solo al exportar.
 
-import { METHOD_LABELS } from '../format';
+import { METHOD_LABELS, periodCell, periodHeader } from '../format';
 import { forecastTable, methodRows, summaryRows, warnings } from './report';
 
 const NUMBER = '#,##0.00';
@@ -33,7 +33,7 @@ export async function buildWorkbook(detail, comparison, chartPng = null) {
     'Pronóstico siguiente',
     `MAD (${detail.unit})`,
     'MAPE (%)',
-    'Meses evaluados',
+    'Periodos evaluados',
     'Estado',
   ]);
   styleHeader(header);
@@ -73,7 +73,7 @@ export async function buildWorkbook(detail, comparison, chartPng = null) {
   const data = workbook.addWorksheet('Datos', { views: [{ state: 'frozen', ySplit: 1, xSplit: 1 }] });
   const table = forecastTable(detail);
   data.columns = [
-    { header: 'Mes', width: 10 },
+    { header: periodHeader(detail.periodicity), width: 12 },
     { header: `Real (${detail.unit})`, width: 14 },
     ...table.methods.map((m) => ({ header: METHOD_LABELS[m.method] ?? m.method, width: 22 })),
     { header: 'Entra al MAD y MAPE', width: 20 },
@@ -81,10 +81,10 @@ export async function buildWorkbook(detail, comparison, chartPng = null) {
   styleHeader(data.getRow(1));
   table.periods.forEach((period, i) => {
     const row = data.addRow([
-      period,
+      periodCell(period, detail.periodicity),
       table.actuals[i],
       ...table.methods.map((m) => m.values[i]),
-      table.isNext[i] ? 'Mes pronosticado' : table.evaluated[i] ? 'Sí' : 'No',
+      table.isNext[i] ? 'Pronosticado' : table.evaluated[i] ? 'Sí' : 'No',
     ]);
     for (let cell = 2; cell <= table.methods.length + 2; cell += 1) row.getCell(cell).numFmt = NUMBER;
     if (table.isNext[i]) row.fill = NEXT_FILL;
