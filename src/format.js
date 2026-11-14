@@ -7,6 +7,7 @@ export const METHOD_LABELS = {
   EXPONENTIAL_SMOOTHING: 'Suavizamiento exponencial',
   TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: 'Suavizamiento con tendencia (Holt)',
   LINEAR_REGRESSION: 'Regresión lineal',
+  SEASONAL_MULTIPLICATIVE: 'Estacional multiplicativo',
 };
 
 /** Nombres cortos para encabezados de tablas angostas; el nombre completo va en `title`. */
@@ -16,9 +17,10 @@ export const METHOD_SHORT_LABELS = {
   EXPONENTIAL_SMOOTHING: 'Suavizamiento',
   TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: 'Holt',
   LINEAR_REGRESSION: 'Regresión',
+  SEASONAL_MULTIPLICATIVE: 'Estacional',
 };
 
-/** Orden fijo de los métodos: también fija su color en el gráfico. */
+/** Orden fijo de los métodos: también fija su color inicial en el gráfico. */
 export const METHOD_ORDER = Object.keys(METHOD_LABELS);
 
 export const STATUS_LABELS = {
@@ -96,5 +98,6 @@ export function formatParameters(method) {
   }
   if (method.method === 'EXPONENTIAL_SMOOTHING') return `α = ${parameterFormat.format(method.alpha)}`;
   if (method.method === 'LINEAR_REGRESSION') return 'Sin parámetros (P = b·t + a)';
+  if (method.method === 'SEASONAL_MULTIPLICATIVE') return `L = ${method.seasonLength}`;
   return `α = ${parameterFormat.format(method.alpha)} · β = ${parameterFormat.format(method.beta)}`;
 }

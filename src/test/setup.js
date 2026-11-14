@@ -4,6 +4,8 @@ import { afterEach } from 'vitest';
 
 afterEach(() => {
   cleanup();
+  // Los colores elegidos se recuerdan en el navegador; cada prueba arranca con los iniciales.
+  localStorage.clear();
   // Borra las cookies creadas por cada prueba.
   document.cookie.split(';').forEach((c) => {
     const name = c.split('=')[0].trim();

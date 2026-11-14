@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getExecutionIndicators, getForecast } from '../../api/modules';
 import { useAuth } from '../../auth/AuthProvider';
 import LineChart from '../../components/LineChart';
+import Notice from '../../components/Notice';
 import ProblemAlert from '../../components/ProblemAlert';
 import QueryState from '../../components/QueryState';
 import { chartToSvg, svgToPng } from '../../export/chartImage';
@@ -16,15 +17,12 @@ import {
   periodWord,
   TEST_PERIODICITY,
   METHOD_LABELS,
-  METHOD_ORDER,
   METHOD_SHORT_LABELS,
 } from '../../format';
 import useModuleQuery from '../useModuleQuery';
 import ComparisonTable, { SORT_OPTIONS, sortRows } from './ComparisonTable';
 import IndicatorBars from './IndicatorBars';
-
-/** Color fijo por método (no por posición en la ejecución): el mismo método siempre se ve igual. */
-const METHOD_COLORS = Object.fromEntries(METHOD_ORDER.map((method, i) => [method, `var(--chart-${i + 1})`]));
+import useSeriesColors, { hexOf } from './useSeriesColors';
 
 const CHART_TYPES = { line: 'Líneas', column: 'Columnas', combo: 'Combinado' };
 
@@ -53,6 +51,8 @@ function Detail({ detail }) {
   );
   const comparison = useModuleQuery(request);
   const chartRef = useRef(null);
+  // Un color por serie, el mismo en el gráfico, las barras y la tabla.
+  const seriesColors = useSeriesColors();
   const [printImage, setPrintImage] = useState(null);
   const [exportProblem, setExportProblem] = useState(null);
   const [exporting, setExporting] = useState(null);
@@ -125,7 +125,7 @@ function Detail({ detail }) {
         </h2>
         {canReadIndicators ? (
           <QueryState query={comparison}>
-            {(data) => <Comparison comparison={data} detail={detail} />}
+            {(data) => <Comparison comparison={data} detail={detail} colors={seriesColors.colors} />}
           </QueryState>
         ) : (
           <p>Su rol no consulta indicadores.</p>
@@ -136,15 +136,22 @@ function Detail({ detail }) {
         <h2 className="panel__title" id="chart-title">
           {measure} real y pronosticada
         </h2>
-        <ForecastChart detail={detail} measure={measure} chartRef={chartRef} canExport={canExport} onExport={run} />
+        <ForecastChart
+          detail={detail}
+          measure={measure}
+          chartRef={chartRef}
+          canExport={canExport}
+          onExport={run}
+          seriesColors={seriesColors}
+        />
         {printImage && <img className="print-only print-chart" src={printImage} alt={`${measure} real y pronosticada`} />}
-        <DataTable detail={detail} measure={measure} canExport={canExport} />
+        <DataTable detail={detail} measure={measure} canExport={canExport} colors={seriesColors.colors} />
       </section>
     </>
   );
 }
 
-function Comparison({ comparison, detail }) {
+function Comparison({ comparison, detail, colors }) {
   const [sortBy, setSortBy] = useState('method');
   return (
     <>
@@ -161,9 +168,15 @@ function Comparison({ comparison, detail }) {
         </label>
       </div>
       <ComparisonTable comparison={comparison} detail={detail} unit={detail.unit} sortBy={sortBy} />
+      {detail.methods.length > 1 && detail.methods.some((m) => m.method === 'SEASONAL_MULTIPLICATIVE') && (
+        <Notice tone="warning">
+          El estacional multiplicativo ajusta cada ciclo con su propio promedio, como el Excel: su MAD y su MAPE no son
+          comparables con los de los otros métodos, que pronostican cada periodo solo con datos anteriores.
+        </Notice>
+      )}
       <IndicatorBars
         rows={sortRows(comparison.methods, sortBy)}
-        colors={METHOD_COLORS}
+        colors={colors}
         unit={detail.unit}
         threshold={comparison.mapeThresholdPercent}
       />
@@ -175,18 +188,19 @@ function initialView(periods) {
   return { hidden: [], type: 'line', showValues: false, zeroBased: true, from: periods[0], to: periods[periods.length - 1] };
 }
 
-/** Gráfico con sus opciones de vista: series visibles, tipo, valores, escala y rango de meses. */
-function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
+/** Gráfico con sus opciones de vista: series visibles y su color, tipo, valores, escala y rango de meses. */
+function ForecastChart({ detail, measure, chartRef, canExport, onExport, seriesColors }) {
   const table = useMemo(() => forecastTable(detail), [detail]);
   const [view, setView] = useState(() => initialView(table.periods));
   const change = (changes) => setView((current) => ({ ...current, ...changes }));
+  const { colors, setColor, resetColors, isCustom } = seriesColors;
 
   const allSeries = [
-    { key: 'real', label: `${measure} real`, color: 'var(--chart-actual)', values: table.actuals },
+    { key: 'real', label: `${measure} real`, color: colors.real, values: table.actuals },
     ...table.methods.map((column) => ({
       key: column.method,
       label: METHOD_LABELS[column.method] ?? column.method,
-      color: METHOD_COLORS[column.method],
+      color: colors[column.method],
       dashed: view.type === 'line' || view.type === 'combo',
       values: column.values,
     })),
@@ -200,7 +214,11 @@ function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
   const toggle = (key) =>
     change({ hidden: view.hidden.includes(key) ? view.hidden.filter((k) => k !== key) : [...view.hidden, key] });
   const fixedZero = view.type !== 'line';
-  const isInitial = JSON.stringify(view) === JSON.stringify(initialView(table.periods));
+  const isInitial = !isCustom && JSON.stringify(view) === JSON.stringify(initialView(table.periods));
+  const reset = () => {
+    setView(initialView(table.periods));
+    resetColors();
+  };
   const name = fileBaseName(detail);
   const image = () => chartToSvg(chartRef.current, { title: `${measure} real y pronosticada · ${detail.productName}` });
 
@@ -208,14 +226,24 @@ function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
     <>
       <div className="chart-controls no-print">
         <fieldset className="chart-controls__group">
-          <legend>Series</legend>
+          <legend>Series y colores</legend>
           <div className="chips">
             {allSeries.map((s) => (
-              <label key={s.key} className="chip">
-                <input type="checkbox" checked={!view.hidden.includes(s.key)} onChange={() => toggle(s.key)} />
-                <span className="chip__swatch" style={{ background: s.color }} aria-hidden="true" />
-                {s.key === 'real' ? 'Real' : (METHOD_SHORT_LABELS[s.key] ?? s.label)}
-              </label>
+              <span key={s.key} className="chip-group">
+                <label className="chip">
+                  <input type="checkbox" checked={!view.hidden.includes(s.key)} onChange={() => toggle(s.key)} />
+                  <span className="chip__swatch" style={{ background: s.color }} aria-hidden="true" />
+                  {s.key === 'real' ? 'Real' : (METHOD_SHORT_LABELS[s.key] ?? s.label)}
+                </label>
+                <input
+                  type="color"
+                  className="color-pick"
+                  value={hexOf(s.color)}
+                  aria-label={`Color de ${s.label}`}
+                  title={`Color de ${s.label}`}
+                  onChange={(event) => setColor(s.key, event.target.value)}
+                />
+              </span>
             ))}
           </div>
         </fieldset>
@@ -266,7 +294,7 @@ function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
             />
             Eje Y desde 0{fixedZero && ' (fijo con columnas)'}
           </label>
-          <button type="button" className="btn btn--small btn--ghost" onClick={() => setView(initialView(table.periods))} disabled={isInitial}>
+          <button type="button" className="btn btn--small btn--ghost" onClick={reset} disabled={isInitial}>
             Restablecer vista
           </button>
           {canExport && (
@@ -308,7 +336,7 @@ function ForecastChart({ detail, measure, chartRef, canExport, onExport }) {
   );
 }
 
-function DataTable({ detail, measure, canExport }) {
+function DataTable({ detail, measure, canExport, colors }) {
   const table = forecastTable(detail);
   return (
     <details className="details details--print-open" open>
@@ -347,7 +375,7 @@ function DataTable({ detail, measure, canExport }) {
               </th>
               {table.methods.map((column) => (
                 <th key={column.method} scope="col" className="table__number" title={METHOD_LABELS[column.method]}>
-                  <span className="table__swatch" style={{ background: METHOD_COLORS[column.method] }} aria-hidden="true" />
+                  <span className="table__swatch" style={{ background: colors[column.method] }} aria-hidden="true" />
                   {METHOD_SHORT_LABELS[column.method] ?? column.method}
                 </th>
               ))}

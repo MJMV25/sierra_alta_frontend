@@ -13,6 +13,8 @@ const INITIAL = {
   EXPONENTIAL_SMOOTHING: { enabled: true, alpha: '0,3' },
   TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: { enabled: true, alpha: '0,3', beta: '0,1' },
   LINEAR_REGRESSION: { enabled: true },
+  // Opcional: su MAD se calcula dentro de la muestra y no es comparable con el de los demás (ADR 12 del backend).
+  SEASONAL_MULTIPLICATIVE: { enabled: false, seasonLength: '12' },
 };
 
 /** "0,3" o "0.3" → 0.3; vacío o inválido → NaN (el backend responde el error del campo). */
@@ -26,11 +28,12 @@ function toRequest(method, config) {
   if (method === 'WEIGHTED_MOVING_AVERAGE') return { method, weights: config.weights.map(parseDecimal) };
   if (method === 'EXPONENTIAL_SMOOTHING') return { method, alpha: parseDecimal(config.alpha) };
   if (method === 'LINEAR_REGRESSION') return { method };
+  if (method === 'SEASONAL_MULTIPLICATIVE') return { method, seasonLength: parseDecimal(config.seasonLength) };
   return { method, alpha: parseDecimal(config.alpha), beta: parseDecimal(config.beta) };
 }
 
 /**
- * Ejecuta de 1 a 5 métodos sobre una referencia. Los rangos (α y β entre 0 y 1, pesos que suman 1, n
+ * Ejecuta de 1 a 6 métodos sobre una referencia. Los rangos (α y β entre 0 y 1, pesos que suman 1, n
  * menor o igual a los meses cargados) los valida el backend y sus errores se muestran junto a cada campo.
  */
 export default function ForecastForm({ options }) {
@@ -216,6 +219,25 @@ function MethodParameters({ method, config, errorFor, onChange }) {
         Sin parámetros: ajusta la recta P = b·t + a con todos los datos del periodo elegido (pendiente e intercepto
         por mínimos cuadrados, sin redondear).
       </p>
+    );
+  }
+  if (method === 'SEASONAL_MULTIPLICATIVE') {
+    return (
+      <div className="method__params">
+        <FormField
+          id={id('seasonLength')}
+          label="Periodos por ciclo (L)"
+          inputMode="numeric"
+          value={config.seasonLength}
+          hint="12 en una serie mensual. Se necesitan al menos 2 ciclos completos."
+          error={errorFor('seasonLength')}
+          onChange={(event) => onChange({ seasonLength: event.target.value })}
+        />
+        <p className="field__hint method__note">
+          Igual que el Excel: cada ciclo se ajusta con su propio promedio y los pronósticos se redondean a entero. Por eso
+          su MAD no es comparable con el de los otros métodos, que solo usan datos anteriores.
+        </p>
+      </div>
     );
   }
   if (method === 'WEIGHTED_MOVING_AVERAGE') {

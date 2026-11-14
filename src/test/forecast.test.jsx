@@ -87,6 +87,40 @@ describe('Ejecutar pronóstico', () => {
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
   });
 
+  it('envía el estacional multiplicativo con su L y muestra su error en el campo', async () => {
+    const ui = userEvent.setup();
+    const requests = mockBackend({
+      me: session('ADMIN'),
+      handler: (req) =>
+        req.method === 'POST'
+          ? {
+              status: 400,
+              data: problem(400, 'validation', 'Datos inválidos.', {
+                errors: [{ field: 'methods[5].seasonLength', message: 'Se necesitan al menos 2 ciclos completos.' }],
+              }),
+            }
+          : fixtures(req),
+    });
+    renderApp('/pronosticos');
+
+    // Viene desactivado: su MAD no es comparable con el de los demás.
+    const seasonal = await screen.findByRole('checkbox', { name: 'Estacional multiplicativo' });
+    expect(seasonal).not.toBeChecked();
+    await ui.click(seasonal);
+    expect(screen.getByLabelText('Periodos por ciclo (L)')).toHaveValue('12');
+    await ui.clear(screen.getByLabelText('Periodos por ciclo (L)'));
+    await ui.type(screen.getByLabelText('Periodos por ciclo (L)'), '4');
+    await ui.click(screen.getByRole('button', { name: 'Ejecutar pronóstico' }));
+
+    expect(requests.find((r) => r.method === 'POST').data.methods.at(-1)).toEqual({
+      method: 'SEASONAL_MULTIPLICATIVE',
+      seasonLength: 4,
+    });
+    expect(await screen.findByLabelText('Periodos por ciclo (L)')).toHaveAccessibleDescription(
+      /Se necesitan al menos 2 ciclos completos\./,
+    );
+  });
+
   it('cambia la cantidad de pesos y muestra su suma', async () => {
     const ui = userEvent.setup();
     mockBackend({ me: session('ADMIN'), handler: fixtures });
