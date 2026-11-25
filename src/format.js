@@ -6,6 +6,8 @@ export const METHOD_LABELS = {
   WEIGHTED_MOVING_AVERAGE: 'Promedio móvil ponderado',
   EXPONENTIAL_SMOOTHING: 'Suavizamiento exponencial',
   TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: 'Suavizamiento con tendencia (Holt)',
+  LINEAR_REGRESSION: 'Regresión lineal',
+  SEASONAL_MULTIPLICATIVE: 'Estacional multiplicativo',
 };
 
 /** Nombres cortos para encabezados de tablas angostas; el nombre completo va en `title`. */
@@ -14,17 +16,18 @@ export const METHOD_SHORT_LABELS = {
   WEIGHTED_MOVING_AVERAGE: 'Prom. ponderado',
   EXPONENTIAL_SMOOTHING: 'Suavizamiento',
   TREND_ADJUSTED_EXPONENTIAL_SMOOTHING: 'Holt',
+  LINEAR_REGRESSION: 'Regresión',
+  SEASONAL_MULTIPLICATIVE: 'Estacional',
 };
 
-/** Orden fijo de los métodos: también fija su color en el gráfico. */
+/** Orden fijo de los métodos: también fija su color inicial en el gráfico. */
 export const METHOD_ORDER = Object.keys(METHOD_LABELS);
 
-export const STATUS_LABELS = {
-  CUMPLE: { label: 'Cumple', tone: 'ok', icon: '✓' },
-  NO_CUMPLE: { label: 'No cumple', tone: 'danger', icon: '✕' },
-  SIN_EVALUAR: { label: 'Sin evaluar', tone: 'off', icon: '–' },
-  SIN_CRITERIO: { label: 'Sin criterio definido', tone: 'off', icon: '–' },
-};
+/** Meses como en la hoja DATOS del Excel; también los usa la importación para reconocer las columnas. */
+export const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
 
 /** La empresa registra producción y la trata como demanda; la interfaz dice "producción" (ADR 07). */
 export const MEASURE_LABELS = { PRODUCCION: 'Producción', DEMANDA: 'Demanda' };
@@ -39,16 +42,54 @@ export function formatNumber(value) {
   return value === null || value === undefined ? '—' : numberFormat.format(Number(value));
 }
 
+/** Error con signo: "+12,5" o "−3"; el signo menos tipográfico se lee mejor en tablas. */
+export function formatSigned(value) {
+  if (value === null || value === undefined) return '—';
+  const number = Number(value);
+  const text = numberFormat.format(Math.abs(number));
+  if (number > 0) return `+${text}`;
+  return number < 0 ? `−${text}` : text;
+}
+
 /** `mapePercent` ya viene en porcentaje desde el backend. */
 export function formatPercent(value) {
   return value === null || value === undefined ? 'No calculable' : `${numberFormat.format(Number(value))} %`;
 }
 
-/** '2026-09' → 'sept de 2026'. */
-export function formatPeriod(period) {
+/**
+ * Series de los casos de prueba del Excel (Spokane, ACME): periodos numerados t = 1, 2, 3… como en el
+ * Excel. El backend guarda cada t como un mes ficticio desde enero de 2000 (migración V7).
+ */
+export const TEST_PERIODICITY = 'PERIODO';
+
+/** '2000-06' → 6 en una serie PERIODO. */
+export function periodIndex(period) {
+  const [year, month] = period.split('-').map(Number);
+  return (year - 2000) * 12 + month;
+}
+
+/** '2026-09' → 'sept de 2026'; en una serie PERIODO, '2000-06' → 't = 6'. */
+export function formatPeriod(period, periodicity) {
   if (!period) return '—';
+  if (periodicity === TEST_PERIODICITY) return `t = ${periodIndex(period)}`;
   const [year, month] = period.split('-').map(Number);
   return monthFormat.format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+/** "mes"/"meses" o, en una serie PERIODO, "periodo"/"periodos". */
+export function periodWord(count, periodicity) {
+  if (periodicity === TEST_PERIODICITY) return count === 1 ? 'periodo' : 'periodos';
+  return count === 1 ? 'mes' : 'meses';
+}
+
+/** Valor de la columna de periodo en CSV y Excel: el número t en una serie PERIODO, si no 'AAAA-MM'. */
+export function periodCell(period, periodicity) {
+  return periodicity === TEST_PERIODICITY ? periodIndex(period) : period;
+}
+
+/** "Mes" o "Periodo" para encabezados. */
+export function periodHeader(periodicity) {
+  return periodicity === TEST_PERIODICITY ? 'Periodo (t)' : 'Mes';
 }
 
 export function formatDateTime(value) {
@@ -64,5 +105,7 @@ export function formatParameters(method) {
     return `pesos ${method.weights.map((weight) => parameterFormat.format(weight)).join(' · ')}`;
   }
   if (method.method === 'EXPONENTIAL_SMOOTHING') return `α = ${parameterFormat.format(method.alpha)}`;
+  if (method.method === 'LINEAR_REGRESSION') return 'Sin parámetros (P = b·t + a)';
+  if (method.method === 'SEASONAL_MULTIPLICATIVE') return `L = ${method.seasonLength}`;
   return `α = ${parameterFormat.format(method.alpha)} · β = ${parameterFormat.format(method.beta)}`;
 }

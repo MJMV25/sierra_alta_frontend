@@ -1,28 +1,32 @@
-/** Secciones de la aplicación. El menú y el inicio se filtran por `permission`, nunca por nombre de rol. */
+/** Secciones de la aplicación. El menú se filtra por `permission`, nunca por nombre de rol. */
 export const MODULES = [
   {
-    path: '/historicos',
-    label: 'Históricos',
+    path: '/',
+    label: 'Hoja de datos',
+    hint: 'Datos, parámetros y pronóstico en vivo',
+    icon: 'sheet',
     permission: 'history:read',
-    description: 'Consulte las series históricas de producción por producto.',
   },
   {
     path: '/pronosticos',
-    label: 'Pronósticos',
+    label: 'Pronósticos guardados',
+    hint: 'Ejecuciones con trazabilidad',
+    icon: 'forecast',
     permission: 'forecast:read',
-    description: 'Consulte las ejecuciones de pronóstico y sus resultados.',
   },
   {
     path: '/indicadores',
     label: 'Indicadores',
+    hint: 'MAD y MAPE por ejecución',
+    icon: 'indicators',
     permission: 'indicators:read',
-    description: 'Revise los indicadores de error (MAD y MAPE) de cada ejecución.',
   },
   {
     path: '/admin/usuarios',
     label: 'Usuarios',
+    hint: 'Cuentas, roles y seguridad',
+    icon: 'users',
     permission: 'users:manage',
-    description: 'Cree cuentas, asigne roles, active o desactive usuarios y revise eventos de seguridad.',
   },
 ];
 

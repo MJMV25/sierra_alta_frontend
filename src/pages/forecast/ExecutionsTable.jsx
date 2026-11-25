@@ -35,7 +35,7 @@ export default function ExecutionsTable({ executions, linkTo, linkLabel = 'Ver',
               <td data-label="Métodos" title={execution.methods.map((method) => METHOD_LABELS[method] ?? method).join(', ')}>
                 {execution.methods.map((method) => METHOD_SHORT_LABELS[method] ?? method).join(' · ')}
               </td>
-              <td data-label="Evaluado desde">{formatPeriod(execution.evaluationStart)}</td>
+              <td data-label="Evaluado desde">{formatPeriod(execution.evaluationStart, execution.periodicity)}</td>
               <td className="table__number" data-label="Versión de datos">
                 {execution.dataVersion}
               </td>

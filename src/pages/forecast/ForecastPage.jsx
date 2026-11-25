@@ -1,22 +1,21 @@
-import { listForecasts, listProducts } from '../../api/modules';
-import { useAuth } from '../../auth/AuthProvider';
+import { listForecasts } from '../../api/modules';
 import QueryState from '../../components/QueryState';
-import { seriesOptions } from '../seriesOptions';
 import useModuleQuery from '../useModuleQuery';
 import ExecutionsTable from './ExecutionsTable';
-import ForecastForm from './ForecastForm';
 
+/** Pronósticos guardados desde la hoja de datos, con sus parámetros y los datos que usaron. */
 export default function ForecastPage() {
-  const { hasPermission } = useAuth();
   const executions = useModuleQuery(listForecasts);
 
   return (
     <div className="page">
       <header className="page__header">
-        <h1 className="page__title">Pronósticos</h1>
-        <p className="page__subtitle">Pronóstico de la producción del mes siguiente con cuatro métodos.</p>
+        <h1 className="page__title">Pronósticos guardados</h1>
+        <p className="page__subtitle">
+          Cada uno conserva el método, los parámetros, los datos con que se calculó y quién lo guardó. Para calcular uno
+          nuevo, use la hoja de datos.
+        </p>
       </header>
-      {hasPermission('forecast:execute') && <NewForecast />}
       <section className="panel" aria-labelledby="executions-title">
         <h2 className="panel__title" id="executions-title">
           Ejecuciones recientes
@@ -27,9 +26,4 @@ export default function ForecastPage() {
       </section>
     </div>
   );
-}
-
-function NewForecast() {
-  const products = useModuleQuery(listProducts);
-  return <QueryState query={products}>{(data) => <ForecastForm options={seriesOptions(data)} />}</QueryState>;
 }

@@ -64,6 +64,7 @@ jobs:
               "## Cobertura del frontend (Vitest + v8)", "",
               "| Métrica | Cobertura | Cubiertas / total |", "| --- | ---: | ---: |",
               row("Líneas", t.lines), row("Ramas", t.branches), row("Sentencias", t.statements), row("Funciones", t.functions),
+              "", "Mínimo exigido: 80 % de líneas (coverage.thresholds en vite.config.js); por debajo, el pipeline falla.",
               "", "Reporte completo: artefacto **cobertura-frontend** (abra index.html).",
             ].join("\n"));
           ' >> "$GITHUB_STEP_SUMMARY"

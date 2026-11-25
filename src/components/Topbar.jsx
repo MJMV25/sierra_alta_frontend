@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthProvider';
-import logo from '../assets/eleven-logo.png';
 
 export default function Topbar() {
   const { user, logout } = useAuth();
@@ -13,16 +12,16 @@ export default function Topbar() {
 
   return (
     <header className="topbar">
-      <div className="topbar__brand">
-        <img src={logo} alt="Eleven Pro" className="topbar__logo" />
-        <span className="topbar__title">Pronóstico de producción</span>
-      </div>
+      <span className="topbar__title">Sierra Alta · Pronóstico de demanda</span>
       <div className="topbar__session">
+        <span className="topbar__avatar" aria-hidden="true">
+          {(user?.username ?? '?').slice(0, 1).toUpperCase()}
+        </span>
         <div className="topbar__user">
           <span className="topbar__username">{user?.username}</span>
           <span className="topbar__role">{user?.roleName}</span>
         </div>
-        <button type="button" className="btn btn--outline-light" onClick={handleLogout} disabled={leaving}>
+        <button type="button" className="btn btn--small btn--outline-light" onClick={handleLogout} disabled={leaving}>
           {leaving ? 'Cerrando…' : 'Cerrar sesión'}
         </button>
       </div>

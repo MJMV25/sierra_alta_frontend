@@ -7,33 +7,30 @@ async function menuLabels() {
   const nav = await screen.findByRole('navigation', { name: 'Menú principal' });
   return within(nav)
     .getAllByRole('link')
-    .map((link) => link.textContent);
+    .map((link) => link.querySelector('.sidebar__label').textContent);
 }
 
 describe('Menú según permisos', () => {
   it.each([
-    ['ADMIN', ['Inicio', 'Históricos', 'Pronósticos', 'Indicadores', 'Usuarios']],
-    ['PLANNER', ['Inicio', 'Históricos', 'Pronósticos', 'Indicadores']],
-    ['ANALYST', ['Inicio', 'Históricos', 'Pronósticos', 'Indicadores']],
+    ['ADMIN', ['Hoja de datos', 'Pronósticos guardados', 'Indicadores', 'Usuarios']],
+    ['PLANNER', ['Hoja de datos', 'Pronósticos guardados', 'Indicadores']],
+    ['ANALYST', ['Hoja de datos', 'Pronósticos guardados', 'Indicadores']],
   ])('%s ve solo sus secciones', async (role, expected) => {
-    mockBackend({ me: session(role) });
+    mockBackend({ me: session(role), handler: fixtures });
     renderApp('/');
     expect(await menuLabels()).toEqual(expected);
   });
 
   it('se basa en los permisos y no en el nombre del rol', async () => {
     mockBackend({ me: session('PLANNER', { permissions: ['indicators:read'] }) });
-    renderApp('/');
-    expect(await menuLabels()).toEqual(['Inicio', 'Indicadores']);
+    renderApp('/indicadores');
+    expect(await menuLabels()).toEqual(['Indicadores']);
   });
 
-  it('muestra en el inicio tarjetas solo de los módulos permitidos', async () => {
-    mockBackend({ me: session('PLANNER') });
+  it('el inicio es la hoja de datos', async () => {
+    mockBackend({ me: session('PLANNER'), handler: fixtures });
     renderApp('/');
-    await screen.findByRole('heading', { name: 'Bienvenido, planner' });
-    const main = screen.getByRole('main');
-    expect(within(main).getByRole('link', { name: /Históricos/ })).toBeInTheDocument();
-    expect(within(main).queryByRole('link', { name: /Usuarios/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Hoja de datos y pronóstico' })).toBeInTheDocument();
   });
 });
 
@@ -58,7 +55,7 @@ describe('Protección de rutas', () => {
           ? { status: 403, data: problem(403, 'access-denied', 'Su rol no tiene permiso para realizar esta operación.') }
           : undefined,
     });
-    renderApp('/historicos');
+    renderApp('/');
     expect(await screen.findByRole('heading', { name: 'Sin permiso' })).toBeInTheDocument();
   });
 
@@ -72,40 +69,5 @@ describe('Protección de rutas', () => {
     mockBackend({ me: session('PLANNER') });
     renderApp('/no-existe');
     expect(await screen.findByRole('heading', { name: 'Página no encontrada' })).toBeInTheDocument();
-  });
-});
-
-describe('Acciones según permisos', () => {
-  it('el planeador solo consulta: no ve "Cargar históricos" ni "Ejecutar pronóstico"', async () => {
-    mockBackend({ me: session('PLANNER'), handler: fixtures });
-    const { unmount } = renderApp('/historicos');
-    await screen.findByRole('heading', { name: 'Referencias' });
-    expect(screen.queryByRole('button', { name: 'Cargar históricos' })).not.toBeInTheDocument();
-    unmount();
-
-    renderApp('/pronosticos');
-    await screen.findByRole('heading', { name: 'Ejecuciones recientes' });
-    expect(screen.queryByRole('button', { name: 'Ejecutar pronóstico' })).not.toBeInTheDocument();
-  });
-
-  it('el analista carga históricos pero no ejecuta pronósticos', async () => {
-    mockBackend({ me: session('ANALYST'), handler: fixtures });
-    const { unmount } = renderApp('/historicos');
-    expect(await screen.findByRole('button', { name: 'Cargar históricos' })).toBeInTheDocument();
-    unmount();
-
-    renderApp('/pronosticos');
-    await screen.findByRole('heading', { name: 'Ejecuciones recientes' });
-    expect(screen.queryByRole('button', { name: 'Ejecutar pronóstico' })).not.toBeInTheDocument();
-  });
-
-  it('el administrador carga históricos y es el único que ejecuta pronósticos', async () => {
-    mockBackend({ me: session('ADMIN'), handler: fixtures });
-    const { unmount } = renderApp('/historicos');
-    expect(await screen.findByRole('button', { name: 'Cargar históricos' })).toBeInTheDocument();
-    unmount();
-
-    renderApp('/pronosticos');
-    expect(await screen.findByRole('button', { name: 'Ejecutar pronóstico' })).toBeInTheDocument();
   });
 });

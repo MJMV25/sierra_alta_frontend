@@ -28,7 +28,7 @@ describe('Inicio de sesión', () => {
     renderApp('/login');
     await fillLogin(user, 'planner', 'clave-segura-123');
 
-    expect(await screen.findByRole('heading', { name: 'Bienvenido, planner' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Hoja de datos y pronóstico' })).toBeInTheDocument();
     const loginRequest = requests.find((r) => r.url === '/api/v1/auth/login');
     expect(loginRequest.data).toEqual({ username: 'planner', password: 'clave-segura-123' });
   });
@@ -76,7 +76,7 @@ describe('Inicio de sesión', () => {
   it('redirige al inicio si ya hay sesión', async () => {
     mockBackend({ me: session('ANALYST') });
     renderApp('/login');
-    expect(await screen.findByRole('heading', { name: 'Bienvenido, analyst' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Hoja de datos y pronóstico' })).toBeInTheDocument();
   });
 });
 
@@ -125,7 +125,7 @@ describe('CSRF', () => {
     renderApp('/login');
     await fillLogin(user, 'planner', 'clave-segura-123');
 
-    expect(await screen.findByRole('heading', { name: 'Bienvenido, planner' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Hoja de datos y pronóstico' })).toBeInTheDocument();
     expect(attempts).toBe(2);
     expect(requests.filter((r) => r.url === '/api/v1/auth/csrf')).toHaveLength(2);
   });

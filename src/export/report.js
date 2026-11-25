@@ -5,11 +5,12 @@
 import {
   formatDateTime,
   formatParameters,
-  formatPercent,
   formatPeriod,
   MEASURE_LABELS,
   METHOD_LABELS,
-  STATUS_LABELS,
+  periodCell,
+  periodHeader,
+  periodWord,
 } from '../format';
 
 /** Meses con real más el mes pronosticado; cada método trae null donde no tiene pronóstico. */
@@ -45,8 +46,8 @@ export function warnings(detail, comparison) {
       notes.push(`${name}: ${method.mapeExcluded} ${method.mapeExcluded === 1 ? 'mes' : 'meses'} con producción 0 fuera del MAPE (sí en el MAD).`);
     }
   });
-  if (comparison?.mapeThresholdPercent === null) {
-    notes.push('Ejecución anterior al umbral de aceptación: sin criterio definido.');
+  if (comparison?.methods.some((row) => row.comparable === false) && detail.methods.length > 1) {
+    notes.push('El estacional multiplicativo se ajusta dentro de la muestra: se muestra, pero no compite por el mejor método.');
   }
   return notes;
 }
@@ -54,23 +55,18 @@ export function warnings(detail, comparison) {
 /** Ficha de la ejecución: pares [etiqueta, valor] en texto. */
 export function summaryRows(detail, comparison) {
   const measure = MEASURE_LABELS[detail.measure] ?? detail.measure ?? 'Producción';
+  const p = detail.periodicity;
   return [
     ['Ejecución', `n.º ${detail.id}`],
     ['Referencia', [detail.productCode, detail.productName].filter(Boolean).join(' · ')],
     ['Medida', `${measure} (${detail.unit})`],
-    ['Periodo histórico', `${formatPeriod(detail.periodFrom)} a ${formatPeriod(detail.periodTo)} (${detail.actuals.length} meses)`],
-    ['Mes pronosticado', formatPeriod(detail.methods[0]?.nextForecast?.period)],
+    ['Periodo histórico', `${formatPeriod(detail.periodFrom, p)} a ${formatPeriod(detail.periodTo, p)} (${detail.actuals.length} ${periodWord(detail.actuals.length, p)})`],
+    ['Periodo pronosticado', formatPeriod(detail.methods[0]?.nextForecast?.period, p)],
     [
       'Rango de evaluación',
       comparison?.evaluationFrom
-        ? `${formatPeriod(comparison.evaluationFrom)} a ${formatPeriod(comparison.evaluationTo)}`
-        : 'Sin meses evaluados',
-    ],
-    [
-      'Umbral de aceptación',
-      comparison?.mapeThresholdPercent === null || comparison?.mapeThresholdPercent === undefined
-        ? 'Sin criterio definido'
-        : `MAPE menor que ${formatPercent(comparison.mapeThresholdPercent)}`,
+        ? `${formatPeriod(comparison.evaluationFrom, p)} a ${formatPeriod(comparison.evaluationTo, p)}`
+        : 'Sin periodos evaluados',
     ],
     ['Fecha y hora de cálculo', formatDateTime(detail.executedAt)],
     ['Ejecutado por', detail.executedByUsername ?? `usuario n.º ${detail.executedBy}`],
@@ -93,7 +89,7 @@ export function methodRows(detail, comparison) {
       pairsUsed: method.pairsUsed,
       bestByMad: Boolean(row?.bestByMad),
       bestByMape: Boolean(row?.bestByMape),
-      status: row ? (STATUS_LABELS[row.status]?.label ?? row.status) : '',
+      comparable: row?.comparable !== false,
     };
   });
 }
@@ -102,12 +98,12 @@ export function methodRows(detail, comparison) {
 export function tableCsv(detail) {
   const table = forecastTable(detail);
   const number = (value) => (value === null || value === undefined ? '' : String(value).replace('.', ','));
-  const header = ['Mes', `Real (${detail.unit})`, ...table.methods.map((m) => METHOD_LABELS[m.method] ?? m.method), 'Entra al MAD y MAPE'];
+  const header = [periodHeader(detail.periodicity), `Real (${detail.unit})`, ...table.methods.map((m) => METHOD_LABELS[m.method] ?? m.method), 'Entra al MAD y MAPE'];
   const lines = table.periods.map((period, i) => [
-    period,
+    periodCell(period, detail.periodicity),
     number(table.actuals[i]),
     ...table.methods.map((m) => number(m.values[i])),
-    table.isNext[i] ? 'Mes pronosticado' : table.evaluated[i] ? 'Sí' : 'No',
+    table.isNext[i] ? 'Pronosticado' : table.evaluated[i] ? 'Sí' : 'No',
   ]);
   return `﻿${[header, ...lines].map((cells) => cells.map(csvCell).join(';')).join('\r\n')}\r\n`;
 }
@@ -125,7 +121,7 @@ export function fileBaseName(detail) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  return `pronostico-${detail.id}-${slug}`;
+  return `pronostico-${detail.id ?? 'vista-previa'}-${slug}`;
 }
 
 /** Descarga un Blob con el nombre dado. */
